@@ -2,7 +2,7 @@
 // La clave "publishable" / "anon" está pensada para ir en la web: la seguridad
 // la ponen las reglas de supabase.sql. Nunca pongas aquí la clave "secret" / "service_role".
 window.ESTANTE_CONFIG = {
-  supabaseUrl: "PEGA_AQUI_LA_PROJECT_URL",
-  supabaseKey: "PEGA_AQUI_LA_CLAVE_PUBLISHABLE",
+  supabaseUrl: "https://qakyztdvarchfehfujpg.supabase.co",
+  supabaseKey: "sb_publishable_ISjTGf8ajJOwD4AE5xKAJA_gDu-nUvJ",
   coversBucket: "covers"
 };
