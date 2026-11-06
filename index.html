@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Estante de Lecturas</title>
+  <meta name="description" content="Los libros que vamos leyendo, escuchando y reseñando.">
+  <meta name="theme-color" content="#0B1A28">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;1,7..72,400&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H10v16H5.5C4.7 20 4 19.3 4 18.5v-13Z" fill="#04131D"/><path d="M11.5 4H15v16h-3.5V4Z" fill="#04131D" opacity=".7"/><path d="M16.3 4.6l2.9-.8 3 14.5-2.9.8-3-14.5Z" fill="#04131D" opacity=".85"/></svg>
+        </div>
+        <div>
+          <h1>Estante de Lecturas</h1>
+          <p class="sub">Lo que vamos leyendo, escuchando y reseñando.</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <input class="search" id="q" type="search" placeholder="Buscar título, autor o género" aria-label="Buscar título, autor o género">
+        <button class="btn primary" id="addBtn" type="button" hidden>+ Agregar libro</button>
+        <div id="authArea"></div>
+      </div>
+    </header>
+
+    <div class="stats" id="stats" aria-label="Resumen"></div>
+    <section id="spot" hidden></section>
+    <main class="rows" id="rows"></main>
+  </div>
+
+  <!-- Ficha del libro -->
+  <div id="detailLayer" hidden>
+    <div class="scrim" data-close="detail"></div>
+    <aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+      <div class="sheet-bar">
+        <span class="eyebrow" id="dCall"></span>
+        <button class="x" type="button" data-close="detail" aria-label="Cerrar">×</button>
+      </div>
+      <div id="dHead"></div>
+      <div id="dAudio" class="section"></div>
+      <div id="dStatus" class="section"></div>
+      <div class="section">
+        <h3>Reseñas</h3>
+        <div id="dReviews" class="reviews"></div>
+        <div id="dMine"></div>
+      </div>
+      <div id="dManage" class="section"></div>
+    </aside>
+  </div>
+
+  <!-- Agregar / editar libro -->
+  <div id="formLayer" hidden>
+    <div class="scrim" data-close="form"></div>
+    <aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="fTitle">
+      <div class="sheet-bar">
+        <h2 id="fTitle">Agregar libro</h2>
+        <button class="x" type="button" data-close="form" aria-label="Cerrar">×</button>
+      </div>
+      <form id="bookForm" class="section" novalidate>
+        <div class="field">
+          <span class="lbl">Portada</span>
+          <div class="cover-pick">
+            <div id="fCoverPreview"></div>
+            <div class="actions">
+              <span class="btn file-btn">Subir imagen<input id="fCover" type="file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="Subir imagen de portada"></span>
+              <button class="btn" type="button" id="fCoverRemove" hidden>Quitar</button>
+              <span class="hint" style="flex-basis:100%">Si no subes una, se crea una portada ilustrada con el título.</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fBookTitle">Título</label>
+          <input id="fBookTitle" type="text" required maxlength="200" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="fAuthor">Autor</label>
+          <input id="fAuthor" type="text" maxlength="160" autocomplete="off">
+        </div>
+        <div class="grid3">
+          <div class="field">
+            <label for="fGenre">Género</label>
+            <input id="fGenre" type="text" maxlength="60" list="genres" autocomplete="off">
+            <datalist id="genres">
+              <option value="Novela"></option><option value="Cuento"></option><option value="Ensayo"></option>
+              <option value="Biografía"></option><option value="Diario"></option><option value="Poesía"></option>
+              <option value="Fantasía"></option><option value="Ciencia ficción"></option><option value="Misterio"></option>
+              <option value="Terror"></option><option value="Romance"></option><option value="Historia"></option>
+              <option value="Desarrollo personal"></option><option value="Programación"></option><option value="Cómic / Manga"></option>
+            </datalist>
+          </div>
+          <div class="field">
+            <label for="fYear">Año</label>
+            <input id="fYear" type="text" maxlength="12" inputmode="numeric" placeholder="1831" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="fPages">Páginas</label>
+            <input id="fPages" type="number" min="1" max="20000" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field" id="fStatusField">
+          <label for="fStatus">Estado</label>
+          <select id="fStatus">
+            <option value="por-leer">Por leer</option>
+            <option value="leyendo">Leyendo</option>
+            <option value="leido">Leído</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fAudio">Audiolibro (enlace de la playlist)</label>
+          <input id="fAudio" type="url" maxlength="600" placeholder="https://www.youtube.com/playlist?list=…" autocomplete="off">
+          <span class="hint">YouTube, Spotify, iVoox, SoundCloud o cualquier enlace. Opcional.</span>
+        </div>
+        <p class="err" id="fError" hidden></p>
+        <div class="actions">
+          <button class="btn primary" type="submit" id="fSubmit">Guardar en el estante</button>
+          <button class="btn" type="button" data-close="form">Cancelar</button>
+        </div>
+      </form>
+    </aside>
+  </div>
+
+  <!-- Iniciar sesión -->
+  <div id="loginLayer" hidden>
+    <div class="scrim" data-close="login"></div>
+    <aside class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="lTitle">
+      <div class="sheet-bar">
+        <h2 id="lTitle">Iniciar sesión</h2>
+        <button class="x" type="button" data-close="login" aria-label="Cerrar">×</button>
+      </div>
+      <p class="lede">Entra para agregar libros, marcar tu avance y escribir reseñas. Sin sesión puedes ver el estante.</p>
+      <form id="loginForm" class="section" novalidate>
+        <div class="field">
+          <label for="lEmail">Correo</label>
+          <input id="lEmail" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="lPass">Contraseña</label>
+          <input id="lPass" type="password" autocomplete="current-password" required>
+        </div>
+        <p class="err" id="lError" hidden></p>
+        <div class="actions">
+          <button class="btn primary" type="submit" id="lSubmit">Entrar</button>
+        </div>
+        <p class="small">¿No tienes cuenta? Pídele acceso a quien administra el estante.</p>
+      </form>
+    </aside>
+  </div>
+
+  <!-- Nombre para las reseñas -->
+  <div id="nameLayer" hidden>
+    <div class="scrim" data-close="name"></div>
+    <aside class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="nTitle">
+      <div class="sheet-bar">
+        <h2 id="nTitle">Tu nombre</h2>
+        <button class="x" type="button" data-close="name" aria-label="Cerrar">×</button>
+      </div>
+      <p class="lede">Así aparecerás en tus reseñas y en los libros que agregues.</p>
+      <form id="nameForm" class="section" novalidate>
+        <div class="field">
+          <label for="nName">Nombre</label>
+          <input id="nName" type="text" maxlength="60" autocomplete="nickname" required>
+        </div>
+        <p class="err" id="nError" hidden></p>
+        <div class="actions">
+          <button class="btn primary" type="submit">Guardar</button>
+          <button class="btn" type="button" id="logoutBtn">Cerrar sesión</button>
+        </div>
+      </form>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
