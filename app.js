@@ -30,6 +30,7 @@
     draft: { rating: 0, text: "" },
     form: { editingId: null, file: null, previewUrl: null, removeCover: false },
     nameAsked: false,
+    notes: {}, notesMissing: false, notesBookId: null,
     busy: false
   };
 
@@ -373,7 +374,137 @@
           '<button class="btn danger" type="button" data-action="delete-ask">Eliminar del estante</button></div>';
     }
     $("dManage").innerHTML = m;
+    renderNotesSection();
   }
+
+  // ---------- Notas privadas (cuaderno por libro) ----------
+  function notesTableMissing(e) {
+    var code = e && e.code, msg = String((e && e.message) || "");
+    return code === "42P01" || code === "PGRST205" || /book_notes.*(does not exist|not find)|Could not find the table/i.test(msg);
+  }
+  function loadNotes() {
+    if (!sb || !S.uid) return;
+    var uid = S.uid;
+    sb.from("book_notes").select("book_id,body,updated_at").then(function (res) {
+      if (uid !== S.uid) return;
+      if (res.error) { S.notesMissing = notesTableMissing(res.error); if (S.openId) renderNotesSection(); return; }
+      S.notesMissing = false;
+      var map = {};
+      res.data.forEach(function (n) { map[n.book_id] = { body: n.body || "", updatedAt: Date.parse(n.updated_at) || 0 }; });
+      // No pisar lo que se está escribiendo en este momento.
+      if (notesDirty && S.notesBookId && S.notes[S.notesBookId]) map[S.notesBookId] = S.notes[S.notesBookId];
+      S.notes = map;
+      if (S.openId) renderNotesSection();
+    });
+  }
+  function renderNotesSection() {
+    var el = $("dNotes");
+    if (!el || !S.openId) return;
+    var h = '<h3>Mis notas<span class="lock">🔒 solo tú las ves</span></h3>';
+    if (!S.uid) {
+      el.innerHTML = h + '<div class="actions"><button class="btn" type="button" data-action="login">Inicia sesión para escribir tus notas</button></div>';
+      return;
+    }
+    if (S.notesMissing) {
+      el.innerHTML = h + '<p class="notice">Las notas están casi listas: falta ejecutar la migración 004 en Supabase.</p>';
+      return;
+    }
+    var n = S.notes[S.openId], body = n && n.body.trim();
+    el.innerHTML = h + (body
+      ? '<div class="note-card">' + esc(body.slice(0, 600)) + "</div>" +
+        '<div class="actions"><button class="btn primary" type="button" data-action="notes-open">✎ Abrir mis notas</button>' +
+        '<span class="small">Editadas el ' + fmtDate(n.updatedAt) + "</span></div>"
+      : '<p class="notice">Un cuaderno para este libro: ideas, frases que te marcaron, preguntas o reflexiones mientras lees.</p>' +
+        '<div class="actions"><button class="btn primary" type="button" data-action="notes-open">✎ Empezar a escribir</button></div>');
+  }
+
+  var notesTimer = null, notesDirty = false, notesSaving = false;
+  function nbStatus(text, kind) {
+    var s = $("nbStatus");
+    s.textContent = text;
+    s.className = "nb-status" + (kind ? " " + kind : "");
+  }
+  function openNotes(bookId) {
+    if (!S.uid) { openLogin("login"); return; }
+    var b = findBook(bookId);
+    if (!b) return;
+    S.notesBookId = bookId;
+    notesDirty = false;
+    $("nbBook").textContent = b.title + (b.author ? " · " + b.author : "");
+    var n = S.notes[bookId];
+    $("nbText").value = n ? n.body : "";
+    nbStatus(n && n.updatedAt ? "Guardado el " + fmtDate(n.updatedAt) : "", null);
+    $("notesLayer").hidden = false;
+    var ta = $("nbText");
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    // Traer la versión más reciente por si se editó en otro dispositivo.
+    sb.from("book_notes").select("body,updated_at").eq("book_id", bookId).eq("user_id", S.uid).maybeSingle().then(function (res) {
+      if (res.error) { if (notesTableMissing(res.error)) { S.notesMissing = true; nbStatus("Falta activar las notas en la base de datos (migración 004).", "error"); } return; }
+      if (!res.data || notesDirty || S.notesBookId !== bookId) return;
+      S.notes[bookId] = { body: res.data.body || "", updatedAt: Date.parse(res.data.updated_at) || 0 };
+      if ($("nbText").value !== S.notes[bookId].body) $("nbText").value = S.notes[bookId].body;
+    });
+  }
+  function saveNotes() {
+    clearTimeout(notesTimer);
+    if (!notesDirty || notesSaving || !S.notesBookId || !S.uid) return Promise.resolve();
+    var bookId = S.notesBookId, body = $("nbText").value;
+    notesSaving = true;
+    notesDirty = false;
+    nbStatus("Guardando…", null);
+    return sb.from("book_notes")
+      .upsert({ book_id: bookId, user_id: S.uid, body: body, updated_at: nowIso() }, { onConflict: "book_id,user_id" })
+      .then(function (res) {
+        notesSaving = false;
+        if (res.error) throw res.error;
+        S.notesMissing = false;
+        S.notes[bookId] = { body: body, updatedAt: Date.now() };
+        if (notesDirty) { notesTimer = setTimeout(saveNotes, 900); nbStatus("Escribiendo…", null); }
+        else nbStatus("Guardado ✓", "saved");
+        if (S.openId === bookId) renderNotesSection();
+      })
+      .catch(function (e) {
+        notesSaving = false;
+        notesDirty = true;
+        console.error("Error al guardar notas:", e);
+        if (notesTableMissing(e)) { S.notesMissing = true; nbStatus("Falta activar las notas en la base de datos (migración 004).", "error"); return; }
+        nbStatus("Sin conexión: se reintentará en unos segundos.", "error");
+        notesTimer = setTimeout(saveNotes, 5000);
+      });
+  }
+  function closeNotes() {
+    saveNotes();
+    $("notesLayer").hidden = true;
+    if (notesDirty) toast("Tus últimas notas aún no se guardaron. Se reintentará al volver a abrirlas.");
+  }
+  function insertAtCursor(text, cursorOffset) {
+    var ta = $("nbText"), start = ta.selectionStart, end = ta.selectionEnd, v = ta.value;
+    var before = v.slice(0, start), after = v.slice(end);
+    var pre = before && !/\n$/.test(before) ? "\n" : "";
+    ta.value = before + pre + text + after;
+    var pos = (before + pre).length + (cursorOffset == null ? text.length : cursorOffset);
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  $("nbText").addEventListener("input", function () {
+    notesDirty = true;
+    nbStatus("Escribiendo…", null);
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(saveNotes, 900);
+  });
+  $("nbMark").addEventListener("click", function () {
+    var b = findBook(S.notesBookId);
+    var parts = [];
+    if (b && b.status === "leyendo" && progCurrent(b)) parts.push(byChapters(b) ? "Capítulo " + b.currentChapter : "Página " + b.currentPage);
+    parts.push(fmtDate(Date.now()));
+    insertAtCursor("— " + parts.join(" · ") + " —\n");
+  });
+  $("nbQuote").addEventListener("click", function () { insertAtCursor("❝ \n", 2); });
+  window.addEventListener("beforeunload", function (e) {
+    if (notesDirty || notesSaving) { saveNotes(); e.preventDefault(); e.returnValue = ""; }
+  });
 
   function renderAudio() {
     var b = findBook(S.openId);
@@ -442,6 +573,7 @@
       S.loaded = true; S.loadError = false;
       renderAll();
       maybeAskName();
+      loadNotes();
     }).catch(function (e) {
       console.error("Error al cargar el estante:", e);
       S.loaded = true; S.loadError = true;
@@ -846,6 +978,7 @@
     if (close === "detail") { closeDetail(); return; }
     if (close === "form") { closeForm(); return; }
     if (close === "login") { closeLogin(); return; }
+    if (close === "notes") { closeNotes(); return; }
     if (close === "name") { closeName(); return; }
     if (t.id === "addBtn") { openForm(null); return; }
     if (t.hasAttribute("data-auth-mode")) { setAuthMode(t.getAttribute("data-auth-mode")); return; }
@@ -864,6 +997,7 @@
       case "signup": openLogin("signup"); break;
       case "profile": openName(); break;
       case "edit": openForm(S.openId); break;
+      case "notes-open": openNotes(S.openId); break;
       case "delete-ask": S.confirmDelete = true; renderDetail(); break;
       case "delete-no": S.confirmDelete = false; renderDetail(); break;
       case "delete-yes": deleteBook(); break;
@@ -886,6 +1020,7 @@
     if (e.key !== "Escape") return;
     if (!$("nameLayer").hidden) closeName();
     else if (!$("loginLayer").hidden) closeLogin();
+    else if (!$("notesLayer").hidden) closeNotes();
     else if (!$("formLayer").hidden) closeForm();
     else if (!$("detailLayer").hidden) closeDetail();
   });
@@ -897,7 +1032,9 @@
     S.userMeta = session && session.user ? session.user.user_metadata || {} : {};
     if (uid === S.uid) return;
     S.uid = uid;
-    if (!uid) S.nameAsked = false;
+    S.notes = {};
+    if (!uid) { S.nameAsked = false; $("notesLayer").hidden = true; notesDirty = false; }
+    else if (S.loaded) loadNotes();
     renderAll();
     if (S.openId) { renderAudio(); renderMine(); }
     maybeAskName();

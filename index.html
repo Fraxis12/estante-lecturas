@@ -47,12 +47,35 @@
       <div id="dHead"></div>
       <div id="dAudio" class="section"></div>
       <div id="dStatus" class="section"></div>
+      <div id="dNotes" class="section"></div>
       <div class="section">
         <h3>Reseñas</h3>
         <div id="dReviews" class="reviews"></div>
         <div id="dMine"></div>
       </div>
       <div id="dManage" class="section"></div>
+    </aside>
+  </div>
+
+  <!-- Cuaderno de notas privadas -->
+  <div id="notesLayer" hidden>
+    <div class="scrim" data-close="notes"></div>
+    <aside class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="nbTitle">
+      <div class="sheet-bar">
+        <div>
+          <span class="eyebrow" id="nbBook"></span>
+          <h2 id="nbTitle">Mis notas</h2>
+        </div>
+        <button class="x" type="button" data-close="notes" aria-label="Cerrar">×</button>
+      </div>
+      <div class="nb-tools">
+        <button class="btn" type="button" id="nbMark" title="Inserta en qué capítulo o página vas y la fecha">+ Marca de avance</button>
+        <button class="btn" type="button" id="nbQuote" title="Para copiar una frase del libro">❝ Cita</button>
+        <span class="nb-status" id="nbStatus" role="status"></span>
+      </div>
+      <textarea id="nbText" class="notebook" maxlength="50000" aria-label="Notas del libro"
+        placeholder="Ideas que te llamaron la atención, frases para recordar, preguntas, reflexiones…"></textarea>
+      <p class="small">🔒 Tus notas son privadas: solo tú las ves. Se guardan solas mientras escribes.</p>
     </aside>
   </div>
 

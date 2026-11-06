@@ -274,6 +274,55 @@ h1 { font-weight: 600; font-size: clamp(24px, 3.6vw, 32px); line-height: 1.1; ma
   display: flex; flex-direction: column; gap: 26px;
 }
 .sheet.narrow { width: min(440px, 100%); }
+.sheet.wide { width: min(780px, 100%); gap: 18px; }
+
+/* ---------- Notebook (notas privadas) ---------- */
+.nb-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.nb-status { margin-left: auto; font-size: 13px; color: var(--muted); }
+.nb-status.saved { color: #6FD39A; }
+.nb-status.error { color: var(--danger); }
+#nbText.notebook {
+  flex: 1 0 auto;
+  min-height: 62vh;
+  width: 100%;
+  resize: vertical;
+  border: none;
+  border-radius: 4px 10px 10px 4px;
+  padding: 30px 22px 30px 64px;
+  font-family: var(--f-read);
+  font-size: 16px;
+  line-height: 30px;
+  color: #2A2733;
+  caret-color: #B23A3A;
+  background:
+    linear-gradient(90deg, transparent 46px, rgba(205, 70, 70, 0.5) 46px, rgba(205, 70, 70, 0.5) 48px, transparent 48px),
+    repeating-linear-gradient(180deg, transparent 0 29px, rgba(58, 115, 165, 0.24) 29px 30px),
+    #F5EFE1;
+  background-attachment: local;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45), inset 6px 0 10px -6px rgba(0, 0, 0, 0.25);
+}
+#nbText.notebook::placeholder { color: #8C8576; font-style: italic; }
+#nbText.notebook:focus { outline: 2px solid var(--cyan); outline-offset: 3px; }
+@media (max-width: 600px) { #nbText.notebook { padding-left: 50px; background-position: -10px 0, 0 0, 0 0; } }
+.note-card {
+  border-radius: 4px 10px 10px 4px;
+  padding: 14px 16px 14px 34px;
+  font-family: var(--f-read);
+  font-size: 14px;
+  line-height: 24px;
+  color: #2A2733;
+  background:
+    linear-gradient(90deg, transparent 20px, rgba(205, 70, 70, 0.45) 20px, rgba(205, 70, 70, 0.45) 21.5px, transparent 21.5px),
+    repeating-linear-gradient(180deg, transparent 0 23px, rgba(58, 115, 165, 0.2) 23px 24px),
+    #F5EFE1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 168px;
+  overflow: hidden;
+  position: relative;
+}
+.note-card::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, #F5EFE1); }
+.lock { font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); margin-left: 8px; }
 @media (max-width: 600px) { .sheet { border-left: none; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); } }
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: slide 0.24s ease-out; }

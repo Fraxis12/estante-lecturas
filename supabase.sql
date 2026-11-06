@@ -39,7 +39,17 @@ create table if not exists public.reviews (
   primary key (book_id, user_id)
 );
 
+-- Notas privadas: un cuaderno por persona y por libro (solo lo ve quien lo escribe).
+create table if not exists public.book_notes (
+  book_id     uuid not null references public.books (id) on delete cascade,
+  user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  body        text not null default '' check (char_length(body) <= 50000),
+  updated_at  timestamptz not null default now(),
+  primary key (book_id, user_id)
+);
+
 -- ---------- Permisos de la API ----------
+grant select, insert, update, delete on public.book_notes to authenticated;
 grant select on public.books, public.reviews, public.profiles to anon, authenticated;
 grant insert, update, delete on public.books, public.reviews, public.profiles to authenticated;
 
@@ -64,6 +74,12 @@ create policy "reviews: leer"          on public.reviews for select using (true)
 create policy "reviews: crear propia"  on public.reviews for insert to authenticated with check (user_id = auth.uid());
 create policy "reviews: editar propia" on public.reviews for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "reviews: borrar propia" on public.reviews for delete to authenticated using (user_id = auth.uid());
+
+alter table public.book_notes enable row level security;
+create policy "notas: leer propias"   on public.book_notes for select to authenticated using (user_id = auth.uid());
+create policy "notas: crear propias"  on public.book_notes for insert to authenticated with check (user_id = auth.uid());
+create policy "notas: editar propias" on public.book_notes for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "notas: borrar propias" on public.book_notes for delete to authenticated using (user_id = auth.uid());
 
 -- ---------- Cambios en vivo (se actualiza solo en todos los dispositivos) ----------
 alter publication supabase_realtime add table public.books, public.reviews, public.profiles;
