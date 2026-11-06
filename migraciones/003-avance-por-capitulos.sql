@@ -1,11 +1,9 @@
 -- Avance por capítulos además de por páginas.
--- Ejecutar una vez en Supabase → SQL Editor.
+-- Ejecutar en Supabase → SQL Editor. Se puede correr más de una vez sin error.
 alter table public.books
-  add column if not exists progress_unit   text not null default 'paginas',
-  add column if not exists chapters        int,
-  add column if not exists current_chapter int  not null default 0;
+  add column if not exists progress_unit   text not null default 'paginas' check (progress_unit in ('paginas', 'capitulos')),
+  add column if not exists chapters        int  check (chapters between 1 and 2000),
+  add column if not exists current_chapter int  not null default 0 check (current_chapter >= 0);
 
-alter table public.books
-  add constraint books_progress_unit_check   check (progress_unit in ('paginas', 'capitulos')),
-  add constraint books_chapters_check        check (chapters between 1 and 2000),
-  add constraint books_current_chapter_check check (current_chapter >= 0);
+-- Que la API vea las columnas nuevas de inmediato.
+notify pgrst, 'reload schema';
