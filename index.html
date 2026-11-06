@@ -105,6 +105,19 @@
             <input id="fPages" type="number" min="1" max="20000" inputmode="numeric">
           </div>
         </div>
+        <div class="grid3">
+          <div class="field">
+            <label for="fChapters">Capítulos</label>
+            <input id="fChapters" type="number" min="1" max="2000" inputmode="numeric">
+          </div>
+          <div class="field" style="grid-column: span 2">
+            <label for="fUnit">Medir el avance por</label>
+            <select id="fUnit">
+              <option value="paginas">Páginas leídas</option>
+              <option value="capitulos">Capítulos leídos</option>
+            </select>
+          </div>
+        </div>
         <div class="field" id="fStatusField">
           <label for="fStatus">Estado</label>
           <select id="fStatus">

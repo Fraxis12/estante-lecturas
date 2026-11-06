@@ -66,6 +66,9 @@
       pages: r.pages || null,
       status: r.status,
       currentPage: r.current_page || 0,
+      unit: r.progress_unit === "capitulos" ? "capitulos" : "paginas",
+      chapters: r.chapters || null,
+      currentChapter: r.current_chapter || 0,
       startedAt: r.started_at ? Date.parse(r.started_at) : 0,
       finishedAt: r.finished_at ? Date.parse(r.finished_at) : 0,
       audioUrl: r.audio_url || "",
@@ -139,7 +142,19 @@
     var rs = reviewsFor(bookId).filter(function (r) { return r.rating > 0; });
     return rs.length ? rs.reduce(function (s, r) { return s + r.rating; }, 0) / rs.length : 0;
   }
-  function pct(b) { return b.pages ? Math.max(0, Math.min(100, Math.round((b.currentPage / b.pages) * 100))) : 0; }
+  // El avance se mide en páginas o en capítulos, según el libro.
+  function byChapters(b) { return b.unit === "capitulos"; }
+  function progTotal(b) { return (byChapters(b) ? b.chapters : b.pages) || 0; }
+  function progCurrent(b) { return byChapters(b) ? b.currentChapter : b.currentPage; }
+  function pct(b) {
+    var t = progTotal(b);
+    return t ? Math.max(0, Math.min(100, Math.round((progCurrent(b) / t) * 100))) : 0;
+  }
+  function progLabel(b) {
+    var t = progTotal(b), c = progCurrent(b);
+    var head = byChapters(b) ? "Capítulo " + c : "Página " + c;
+    return t ? head + " de " + t + " · " + pct(b) + "%" : head;
+  }
 
   // ---------- Pieces ----------
   function starsHtml(v, num) {
@@ -166,13 +181,13 @@
       '<div class="ctitle' + long + '">' + titleHtml(b.title) + "</div>" +
       (b.author ? '<div class="cauthor">' + esc(b.author) + "</div>" : "");
     if (imgSrc) h += '<img class="cover-img" alt="" loading="lazy" src="' + esc(imgSrc) + '">';
-    if (opts.progress && b.status === "leyendo" && b.pages) h += '<div class="cprog"><span style="width:' + pct(b) + '%"></span></div>';
+    if (opts.progress && b.status === "leyendo" && progTotal(b)) h += '<div class="cprog"><span style="width:' + pct(b) + '%"></span></div>';
     return h + "</div>";
   }
   function cardHtml(b) {
     var avg = avgRating(b.id), line3 = [];
     if (b.year) line3.push(esc(b.year));
-    if (b.status === "leyendo" && b.pages) line3.push(pct(b) + "% leído");
+    if (b.status === "leyendo" && progTotal(b)) line3.push(byChapters(b) ? "Cap. " + b.currentChapter + "/" + b.chapters : pct(b) + "% leído");
     return '<article class="card">' +
       '<div class="cover-wrap"><button class="cover-btn" type="button" data-open="' + esc(b.id) + '" aria-label="Abrir ' + esc(b.title) + '">' + coverHtml(b, { progress: true }) + "</button>" +
       (b.audioUrl ? audioLink(b, "audio-badge", SPEAKER) : "") + "</div>" +
@@ -202,7 +217,9 @@
     S.books.forEach(function (b) {
       if (c[b.status] != null) c[b.status]++;
       if (b.status === "leido") pages += Number(b.pages) || 0;
-      if (b.status === "leyendo") pages += Number(b.currentPage) || 0;
+      if (b.status === "leyendo") {
+        pages += byChapters(b) ? Math.round((Number(b.pages) || 0) * pct(b) / 100) : Number(b.currentPage) || 0;
+      }
       if (b.audioUrl) audio++;
       var a = avgRating(b.id); if (a) ratings.push(a);
     });
@@ -232,7 +249,8 @@
       '<p class="kicker">Continuar leyendo</p>' +
       "<h2>" + esc(b.title) + "</h2>" +
       '<p class="by">' + esc(b.author || "Autor desconocido") + (b.genre ? ' · <span style="color:var(--cyan)">' + esc(b.genre) + "</span>" : "") + "</p>" +
-      (b.pages ? '<div class="bar"><span style="width:' + pct(b) + '%"></span></div><p class="pg">Página ' + b.currentPage + " de " + b.pages + " · " + pct(b) + "%</p>" : '<p class="pg">Marca en qué página vas desde la ficha del libro.</p>') +
+      (progTotal(b) ? '<div class="bar"><span style="width:' + pct(b) + '%"></span></div><p class="pg">' + progLabel(b) + "</p>"
+        : '<p class="pg">' + (progCurrent(b) ? progLabel(b) : "Marca tu avance desde la ficha del libro.") + "</p>") +
       '<div class="actions">' +
       (b.audioUrl ? audioLink(b, "btn gold", '<span style="width:18px;height:18px;display:inline-grid">' + SPEAKER + "</span> Escuchar en " + esc(audioHost(b.audioUrl))) : "") +
       '<button class="btn" type="button" data-open="' + esc(b.id) + '">Abrir ficha</button>' +
@@ -303,6 +321,7 @@
     var facts = [];
     if (b.year) facts.push(["Año", esc(b.year)]);
     if (b.pages) facts.push(["Páginas", esc(b.pages)]);
+    if (b.chapters) facts.push(["Capítulos", esc(b.chapters)]);
     if (b.startedAt) facts.push(["Empezado", fmtDate(b.startedAt)]);
     if (b.finishedAt && b.status === "leido") facts.push(["Terminado", fmtDate(b.finishedAt)]);
     if (b.addedBy) facts.push(["Agregado por", esc(nameOf(b.addedBy))]);
@@ -321,10 +340,14 @@
         return '<button type="button" data-status="' + k + '" aria-pressed="' + (b.status === k) + '"' + dis + ">" + STATUS[k] + "</button>";
       }).join("") + "</div>";
     if (b.status === "leyendo") {
-      st += '<div class="page-row"><label for="dPage">Voy en la página</label>' +
-        '<input id="dPage" type="number" min="0" max="' + (b.pages || 20000) + '" value="' + b.currentPage + '"' + dis + ">" +
-        (b.pages ? "<span>de " + b.pages + " · " + pct(b) + "%</span>" : "") + "</div>" +
-        (b.pages ? '<div class="pbar"><span style="width:' + pct(b) + '%"></span></div>' : "");
+      var total = progTotal(b), ch = byChapters(b);
+      st += '<div class="page-row"><label for="dUnit">Avance por</label>' +
+        '<select id="dUnit"' + dis + '><option value="paginas"' + (ch ? "" : " selected") + '>páginas</option><option value="capitulos"' + (ch ? " selected" : "") + ">capítulos</option></select></div>" +
+        '<div class="page-row"><label for="dPage">' + (ch ? "Voy en el capítulo" : "Voy en la página") + "</label>" +
+        '<input id="dPage" type="number" min="0" max="' + (total || (ch ? 2000 : 20000)) + '" value="' + progCurrent(b) + '"' + dis + ">" +
+        (total ? "<span>de " + total + " · " + pct(b) + "%</span>" : "") + "</div>" +
+        (total ? '<div class="pbar"><span style="width:' + pct(b) + '%"></span></div>'
+          : '<p class="small">Agrega el total de ' + (ch ? "capítulos" : "páginas") + " en «Editar libro» para ver el porcentaje.</p>");
     }
     $("dStatus").innerHTML = st;
 
@@ -458,21 +481,36 @@
     if (!b || b.status === status) return;
     var now = nowIso(), patch = { status: status };
     if (status === "leyendo" && !b.startedAt) patch.started_at = now;
-    if (status === "leido") { if (!b.startedAt) patch.started_at = now; patch.finished_at = now; if (b.pages) patch.current_page = Number(b.pages); }
-    else patch.finished_at = null;
-    if (status === "por-leer") { patch.started_at = null; patch.current_page = 0; }
+    if (status === "leido") {
+      if (!b.startedAt) patch.started_at = now;
+      patch.finished_at = now;
+      if (b.pages) patch.current_page = Number(b.pages);
+      if (b.chapters) patch.current_chapter = Number(b.chapters);
+    } else patch.finished_at = null;
+    if (status === "por-leer") {
+      patch.started_at = null; patch.current_page = 0;
+      if (b.currentChapter) patch.current_chapter = 0;
+    }
     run(function () { return updateBook(id, patch); });
   }
-  function setPage(id, value) {
+  function setProgress(id, value) {
     var b = findBook(id);
+    if (!b) return;
+    var total = progTotal(b);
     var n = Math.max(0, Math.floor(Number(value) || 0));
-    if (b && b.pages) n = Math.min(n, Number(b.pages));
-    if (!b || n === b.currentPage) return;
+    if (total) n = Math.min(n, total);
+    if (n === progCurrent(b)) return;
     run(function () {
-      var patch = { current_page: n };
-      if (b.pages && n >= Number(b.pages)) { patch.status = "leido"; patch.finished_at = nowIso(); }
+      var patch = {};
+      patch[byChapters(b) ? "current_chapter" : "current_page"] = n;
+      if (total && n >= total) { patch.status = "leido"; patch.finished_at = nowIso(); }
       return updateBook(id, patch).then(function () { if (patch.status) toast("¡Terminado! Lo moví a Leídos."); });
     });
+  }
+  function setUnit(id, unit) {
+    var b = findBook(id);
+    if (!b || b.unit === unit) return;
+    run(function () { return updateBook(id, { progress_unit: unit }); });
   }
   function saveAudio(remove) {
     var id = S.openId, url = "";
@@ -581,6 +619,8 @@
     $("fGenre").value = b ? b.genre : "";
     $("fYear").value = b ? b.year : "";
     $("fPages").value = b && b.pages ? b.pages : "";
+    $("fChapters").value = b && b.chapters ? b.chapters : "";
+    $("fUnit").value = b ? b.unit : "paginas";
     $("fAudio").value = b ? b.audioUrl : "";
     $("fStatus").value = b ? b.status : "por-leer";
     $("fStatusField").hidden = !!b;
@@ -625,8 +665,16 @@
       pages: pages,
       audio_url: audio || null
     };
+    var chapters = Math.floor(Number($("fChapters").value)) || null;
+    var unit = $("fUnit").value === "capitulos" ? "capitulos" : "paginas";
     var f = S.form, editId = f.editingId, old = editId ? findBook(editId) : null;
     var oldCover = old && old.coverPath;
+    // Las columnas de capítulos solo se envían cuando se usan, así el formulario
+    // sigue funcionando en una base de datos sin la migración 003.
+    if (chapters || unit === "capitulos" || (old && (old.chapters || old.unit === "capitulos"))) {
+      row.chapters = chapters;
+      row.progress_unit = unit;
+    }
     var file = f.file, removeCover = f.removeCover;
     run(function () {
       return (file ? uploadCover(file) : Promise.resolve(null)).then(function (newPath) {
@@ -642,6 +690,7 @@
         row.status = status;
         row.added_by = S.uid;
         row.current_page = status === "leido" && pages ? pages : 0;
+        if (status === "leido" && chapters) row.current_chapter = chapters;
         row.started_at = status === "por-leer" ? null : now;
         row.finished_at = status === "leido" ? now : null;
         return sb.from("books").insert(row).then(must).then(function () {
@@ -809,7 +858,10 @@
       case "audio-remove": saveAudio(true); break;
     }
   });
-  document.addEventListener("change", function (e) { if (e.target.id === "dPage") setPage(S.openId, e.target.value); });
+  document.addEventListener("change", function (e) {
+    if (e.target.id === "dPage") setProgress(S.openId, e.target.value);
+    if (e.target.id === "dUnit") setUnit(S.openId, e.target.value);
+  });
   document.addEventListener("input", function (e) { if (e.target.id === "dReview") S.draft.text = e.target.value; });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && e.target.id === "dAudioUrl") { e.preventDefault(); saveAudio(false); }

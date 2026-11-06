@@ -328,7 +328,8 @@ input[type="text"], input[type="number"], input[type="url"], input[type="email"]
 input:focus, select:focus, textarea:focus { border-color: var(--cyan); outline: none; }
 textarea { min-height: 120px; resize: vertical; font-family: var(--f-read); line-height: 1.6; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-@media (max-width: 460px) { .grid3 { grid-template-columns: 1fr; } }
+@media (max-width: 460px) { .grid3 { grid-template-columns: 1fr; } .grid3 > .field { grid-column: auto !important; } }
+.page-row select { width: auto; padding: 7px 10px; }
 .cover-pick { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 14px; align-items: center; }
 .cover-pick .cover { box-shadow: none; }
 .file-btn { position: relative; overflow: hidden; }
