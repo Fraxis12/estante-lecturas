@@ -347,7 +347,9 @@
         '<input id="dPage" type="number" min="0" max="' + (total || (ch ? 2000 : 20000)) + '" value="' + progCurrent(b) + '"' + dis + ">" +
         (total ? "<span>de " + total + " · " + pct(b) + "%</span>" : "") + "</div>" +
         (total ? '<div class="pbar"><span style="width:' + pct(b) + '%"></span></div>'
-          : '<p class="small">Agrega el total de ' + (ch ? "capítulos" : "páginas") + " en «Editar libro» para ver el porcentaje.</p>");
+          : '<div class="page-row"><label for="dTotal">' + (ch ? "¿Cuántos capítulos tiene el libro?" : "¿Cuántas páginas tiene el libro?") + "</label>" +
+            '<input id="dTotal" type="number" min="1" max="' + (ch ? 2000 : 20000) + '" placeholder="' + (ch ? "Ej. 24" : "Ej. 320") + '"' + dis + "></div>" +
+            '<p class="small">Con el total se calcula el porcentaje y la barra de avance.</p>');
     }
     $("dStatus").innerHTML = st;
 
@@ -454,7 +456,9 @@
     console.error("Error al guardar:", e);
     var code = e && (e.code || e.statusCode || e.status);
     var msg = String((e && e.message) || "");
-    if (code === "42501" || code === 401 || code === 403 || code === "401" || code === "403" || /row-level security|JWT/i.test(msg)) {
+    if (code === "42703" || code === "PGRST204" || /column .* does not exist|Could not find the .* column/i.test(msg)) {
+      toast("Falta actualizar la base de datos para usar capítulos (migración 003 en Supabase).");
+    } else if (code === "42501" || code === 401 || code === 403 || code === "401" || code === "403" || /row-level security|JWT/i.test(msg)) {
       toast("Tu sesión no tiene permiso para este cambio. Vuelve a iniciar sesión.");
     } else if (code === 413 || code === "413" || /too large|exceeded the maximum/i.test(msg)) {
       toast("La imagen es demasiado grande. Prueba con otra más liviana.");
@@ -505,6 +509,19 @@
       patch[byChapters(b) ? "current_chapter" : "current_page"] = n;
       if (total && n >= total) { patch.status = "leido"; patch.finished_at = nowIso(); }
       return updateBook(id, patch).then(function () { if (patch.status) toast("¡Terminado! Lo moví a Leídos."); });
+    });
+  }
+  function setTotal(id, value) {
+    var b = findBook(id);
+    var n = Math.floor(Number(value) || 0);
+    if (!b || n < 1) return;
+    var ch = byChapters(b);
+    n = Math.min(n, ch ? 2000 : 20000);
+    var patch = {};
+    patch[ch ? "chapters" : "pages"] = n;
+    if (progCurrent(b) > n) patch[ch ? "current_chapter" : "current_page"] = n;
+    run(function () {
+      return updateBook(id, patch).then(function () { toast(ch ? "Total de capítulos guardado." : "Total de páginas guardado."); });
     });
   }
   function setUnit(id, unit) {
@@ -861,6 +878,7 @@
   document.addEventListener("change", function (e) {
     if (e.target.id === "dPage") setProgress(S.openId, e.target.value);
     if (e.target.id === "dUnit") setUnit(S.openId, e.target.value);
+    if (e.target.id === "dTotal") setTotal(S.openId, e.target.value);
   });
   document.addEventListener("input", function (e) { if (e.target.id === "dReview") S.draft.text = e.target.value; });
   document.addEventListener("keydown", function (e) {
