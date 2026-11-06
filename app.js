@@ -272,7 +272,8 @@
       (progTotal(b) ? '<div class="bar"><span style="width:' + pct(b) + '%"></span></div><p class="pg">' + progLabel(b) + "</p>"
         : '<p class="pg">' + (progCurrent(b) ? progLabel(b) : "Marca tu avance desde la ficha del libro.") + "</p>") +
       '<div class="actions">' +
-      (b.audioUrl ? audioLink(b, "btn gold", '<span style="width:18px;height:18px;display:inline-grid">' + SPEAKER + "</span> Escuchar en " + esc(audioHost(b.audioUrl))) : "") +
+      (b.audioUrl ? audioLink(b, "btn gold", '<span style="width:18px;height:18px;display:inline-grid">' + SPEAKER + "</span>" +
+        '<span class="lbl-long">Escuchar en ' + esc(audioHost(b.audioUrl)) + '</span><span class="lbl-short">Escuchar</span>') : "") +
       '<button class="btn" type="button" data-open="' + esc(b.id) + '">Abrir ficha</button>' +
       "</div></div></div></div>";
   }
@@ -534,7 +535,7 @@
     if (b.audioUrl && !S.audioEditing) {
       h += '<div class="audio-box"><div class="ic">' + SPEAKER + "</div><div>" +
         '<div class="t">Playlist en ' + esc(audioHost(b.audioUrl)) + "</div>" +
-        '<div class="host">' + esc(b.audioUrl) + "</div></div></div>" +
+        '<div class="host" title="' + esc(b.audioUrl) + '">' + esc(b.audioUrl.replace(/^https?:\/\/(www\.)?/, "")) + "</div></div></div>" +
         '<div class="actions">' + audioLink(b, "btn gold", icon("play") + "Escuchar ahora") +
         (S.uid ? '<button class="btn" type="button" data-action="audio-edit">Cambiar enlace</button>' : "") + "</div>";
     } else if (S.uid) {

@@ -86,6 +86,10 @@ h1 { font-weight: 600; font-size: clamp(24px, 3.6vw, 32px); line-height: 1.1; ma
   padding: 9px 16px;
 }
 .search::placeholder { color: var(--muted); }
+@media (max-width: 600px) {
+  .top-actions { flex-basis: 100%; justify-content: flex-start; }
+  .search { max-width: none; flex-basis: 100%; }
+}
 .btn {
   border: 1px solid var(--line);
   background: var(--bg-raised);
@@ -146,6 +150,11 @@ h1 { font-weight: 600; font-size: clamp(24px, 3.6vw, 32px); line-height: 1.1; ma
 .spot .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), #7FD6F7); border-radius: 3px; }
 .spot .pg { font-size: 13px; color: var(--soft); margin: 8px 0 18px; font-variant-numeric: tabular-nums; }
 .spot .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.lbl-short { display: none; }
+@media (max-width: 560px) {
+  .spot .lbl-long { display: none; }
+  .spot .lbl-short { display: inline; }
+}
 
 /* ---------- Rows ---------- */
 .rows { display: flex; flex-direction: column; gap: 36px; }
@@ -374,7 +383,7 @@ h1 { font-weight: 600; font-size: clamp(24px, 3.6vw, 32px); line-height: 1.1; ma
 .link:hover { color: var(--ink); }
 .ok { color: #6FD39A; font-size: 14px; margin: 0; }
 .page-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--soft); }
-.page-row input { width: 100px; }
+.page-row input[type="number"] { width: 96px; flex: none; }
 .pbar { height: 5px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; }
 .pbar span { display: block; height: 100%; background: var(--cyan); }
 .audio-box {
@@ -385,7 +394,8 @@ h1 { font-weight: 600; font-size: clamp(24px, 3.6vw, 32px); line-height: 1.1; ma
 }
 .audio-box .ic { width: 48px; height: 48px; border-radius: 50%; background: var(--gold); color: #1E1503; display: grid; place-items: center; }
 .audio-box .ic svg { width: 24px; height: 24px; }
-.audio-box .host { font-size: 13px; color: var(--soft); overflow-wrap: anywhere; }
+.audio-box > div { min-width: 0; }
+.audio-box .host { font-size: 13px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .audio-box .t { font-weight: 600; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field label, .field .lbl { font-size: 13px; font-weight: 500; color: var(--soft); }
