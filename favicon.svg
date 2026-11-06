@@ -1,1 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3DB6E8"/><stop offset="1" stop-color="#1B6F98"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#g)"/><path d="M8 9.5C8 8.7 8.7 8 9.5 8H14v16H9.5C8.7 24 8 23.3 8 22.5v-13Z" fill="#04131D"/><path d="M15.5 8H19v16h-3.5V8Z" fill="#04131D" opacity=".7"/><path d="M20.3 8.6l2.9-.8 3 14.5-2.9.8-3-14.5Z" fill="#04131D" opacity=".85"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="g" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#4CC3F0"/>
+      <stop offset="1" stop-color="#1B6F98"/>
+    </linearGradient>
+  </defs>
+  <!-- Heptágono -->
+  <path d="M16 1.6 27.4 7.1 30.2 19.4 22.3 29.3H9.7L1.8 19.4 4.6 7.1Z" fill="url(#g)" stroke="url(#g)" stroke-width="1.6" stroke-linejoin="round"/>
+  <!-- Tapa del libro -->
+  <path d="M5.6 11.6V22.9C9.4 21.9 13.1 22.2 16 23.9 18.9 22.2 22.6 21.9 26.4 22.9V11.6" fill="none" stroke="#04131D" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Páginas -->
+  <path d="M16 11.4C13.6 9.8 10.6 9.4 7.6 10.2V21.1C10.6 20.4 13.6 20.8 16 22.3Z" fill="#F5EFE1"/>
+  <path d="M16 11.4C18.4 9.8 21.4 9.4 24.4 10.2V21.1C21.4 20.4 18.4 20.8 16 22.3Z" fill="#F5EFE1"/>
+  <!-- Lomo -->
+  <path d="M16 11.4V22.3" stroke="#04131D" stroke-width="1.2" stroke-linecap="round"/>
+</svg>
