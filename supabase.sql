@@ -50,27 +50,25 @@ create table if not exists public.book_notes (
 
 -- ---------- Permisos de la API ----------
 grant select, insert, update, delete on public.book_notes to authenticated;
-grant select on public.books, public.reviews, public.profiles to anon, authenticated;
-grant insert, update, delete on public.books, public.reviews, public.profiles to authenticated;
+grant select, insert, update, delete on public.books, public.reviews, public.profiles to authenticated;
 
 -- ---------- Reglas (Row Level Security) ----------
--- Cualquiera con el enlace puede VER el estante.
--- Solo quien inició sesión puede agregar o cambiar libros, y solo quien agregó un libro puede eliminarlo.
--- Cada persona solo puede escribir su propia reseña y su propio nombre.
+-- Estantes personales: cada usuario solo ve y cambia sus propios libros, reseñas, notas y nombre.
+-- Sin sesión no se ve nada.
 alter table public.profiles enable row level security;
 alter table public.books    enable row level security;
 alter table public.reviews  enable row level security;
 
-create policy "profiles: leer"         on public.profiles for select using (true);
-create policy "profiles: crear propio" on public.profiles for insert to authenticated with check (id = auth.uid());
+create policy "profiles: leer propio"   on public.profiles for select to authenticated using (id = auth.uid());
+create policy "profiles: crear propio"  on public.profiles for insert to authenticated with check (id = auth.uid());
 create policy "profiles: editar propio" on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
-create policy "books: leer"     on public.books for select using (true);
-create policy "books: agregar"  on public.books for insert to authenticated with check (true);
-create policy "books: editar"   on public.books for update to authenticated using (true) with check (true);
-create policy "books: eliminar propio" on public.books for delete to authenticated using (added_by = auth.uid());
+create policy "books: leer propios"     on public.books for select to authenticated using (added_by = auth.uid());
+create policy "books: agregar propios"  on public.books for insert to authenticated with check (added_by = auth.uid());
+create policy "books: editar propios"   on public.books for update to authenticated using (added_by = auth.uid()) with check (added_by = auth.uid());
+create policy "books: eliminar propios" on public.books for delete to authenticated using (added_by = auth.uid());
 
-create policy "reviews: leer"          on public.reviews for select using (true);
+create policy "reviews: leer propias"  on public.reviews for select to authenticated using (user_id = auth.uid());
 create policy "reviews: crear propia"  on public.reviews for insert to authenticated with check (user_id = auth.uid());
 create policy "reviews: editar propia" on public.reviews for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "reviews: borrar propia" on public.reviews for delete to authenticated using (user_id = auth.uid());

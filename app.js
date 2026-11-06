@@ -44,6 +44,7 @@
     draft: { rating: 0, text: "" },
     form: { editingId: null, file: null, previewUrl: null, removeCover: false },
     nameAsked: false,
+    authReady: false,
     notes: {}, notesMissing: false, notesBookId: null,
     busy: false
   };
@@ -222,9 +223,10 @@
         "<span>" + esc(S.profiles[S.uid] || "Tu perfil") + "</span></button>";
       el.firstChild.style.padding = "4px 14px 4px 4px";
     } else {
-      el.innerHTML = '<button class="btn" type="button" data-action="login">Entrar o crear cuenta</button>';
+      el.innerHTML = S.authReady ? '<button class="btn" type="button" data-action="login">Entrar</button>' : "";
     }
     $("addBtn").hidden = !S.uid;
+    $("q").hidden = !S.uid;
   }
 
   function renderStats() {
@@ -294,17 +296,26 @@
       el.innerHTML = '<div class="empty"><h2>Falta conectar la base de datos</h2><p>Escribe la Project URL y la clave publishable de Supabase en <b>config.js</b> y vuelve a cargar la página.</p></div>';
       return;
     }
-    if (S.loadError && !S.books.length) {
-      el.innerHTML = '<div class="empty"><h2>No se pudo abrir el estante</h2><p>Revisa tu conexión y vuelve a cargar la página. Los libros guardados siguen ahí.</p></div>';
+    if (!S.authReady) { el.innerHTML = '<p class="notice">Cargando…</p>'; return; }
+    if (!S.uid) {
+      el.innerHTML = '<div class="empty welcome"><div class="ghosts" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' +
+        "<h2>Tu estante personal de lecturas</h2>" +
+        "<p>Registra los libros que lees, tu avance por páginas o capítulos, tus audiolibros, notas y reseñas. Cada cuenta tiene su propio estante y nadie más lo ve.</p>" +
+        '<div class="actions" style="justify-content:center">' +
+        '<button class="btn primary" type="button" data-action="signup">Crear cuenta gratis</button>' +
+        '<button class="btn" type="button" data-action="login">Ya tengo cuenta</button></div></div>';
       return;
     }
-    if (!S.loaded) { el.innerHTML = '<p class="notice">Cargando el estante…</p>'; return; }
+    if (S.loadError && !S.books.length) {
+      el.innerHTML = '<div class="empty"><h2>No se pudo abrir tu estante</h2><p>Revisa tu conexión y vuelve a cargar la página. Tus libros guardados siguen ahí.</p></div>';
+      return;
+    }
+    if (!S.loaded) { el.innerHTML = '<p class="notice">Cargando tu estante…</p>'; return; }
     if (!S.books.length) {
       el.innerHTML = '<div class="empty"><div class="ghosts" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' +
-        "<h2>El estante está vacío</h2>" +
+        "<h2>Tu estante está vacío</h2>" +
         "<p>Agrega el primer libro: puedes subir su portada, pegar la playlist del audiolibro y, cuando lo termines, dejar tu reseña.</p>" +
-        (S.uid ? '<button class="btn primary" type="button" data-action="add">' + icon("plus") + "Agregar el primer libro</button>"
-               : '<button class="btn primary" type="button" data-action="signup">Crear cuenta para agregar libros</button>') + "</div>";
+        '<button class="btn primary" type="button" data-action="add">' + icon("plus") + "Agregar el primer libro</button></div>";
       return;
     }
     var q = S.q.trim().toLowerCase();
@@ -347,7 +358,6 @@
     if (b.chapters) facts.push(["Capítulos", esc(b.chapters)]);
     if (b.startedAt) facts.push(["Empezado", fmtDate(b.startedAt)]);
     if (b.finishedAt && b.status === "leido") facts.push(["Terminado", fmtDate(b.finishedAt)]);
-    if (b.addedBy) facts.push(["Agregado por", esc(nameOf(b.addedBy))]);
     var avg = avgRating(b.id);
     $("dHead").innerHTML = '<div class="d-head">' + coverHtml(b) + "<div>" +
       '<h2 id="dTitle">' + esc(b.title) + "</h2>" +
@@ -376,18 +386,8 @@
     }
     $("dStatus").innerHTML = st;
 
-    var rs = reviewsFor(b.id).filter(function (r) { return r.uid !== S.uid; });
-    $("dReviews").innerHTML = rs.length ? rs.map(function (r) {
-      return '<div class="review">' + avatarHtml(r.uid) +
-        '<div><div class="who"><b>' + esc(nameOf(r.uid)) + "</b>" + (r.rating ? starsHtml(r.rating, false) : "") +
-        '<span class="small">' + fmtDate(r.updatedAt) + "</span></div>" + (r.text ? "<p>" + esc(r.text) + "</p>" : "") + "</div></div>";
-    }).join("") : (S.uid ? "" : '<p class="notice">Todavía nadie ha dejado una reseña.</p>');
-
     var m = "";
-    if (S.uid && b.addedBy !== S.uid) {
-      m = '<div class="actions"><button class="btn" type="button" data-action="edit">Editar libro y portada</button></div>' +
-        '<p class="small">Solo quien agregó este libro puede eliminarlo.</p>';
-    } else if (S.uid) {
+    if (S.uid) {
       m = S.confirmDelete
         ? '<div class="confirm"><span>¿Eliminar «' + esc(b.title) + '» del estante? Esto no se puede deshacer.</span>' +
           '<button class="btn danger solid" type="button" data-action="delete-yes"' + dis + ">Sí, eliminar</button>" +
@@ -562,7 +562,7 @@
       picker += '<button type="button" data-rate="' + i + '" class="' + (i <= d.rating ? "" : "off") + '" aria-label="' + i + (i === 1 ? " estrella" : " estrellas") + '" aria-pressed="' + (i === d.rating) + '">' + icon("star") + "</button>";
     }
     el.innerHTML = '<div class="mine">' +
-      '<div class="actions" style="justify-content:space-between"><b>Tu reseña</b>' + (mine && mine.updatedAt ? '<span class="small">Guardada el ' + fmtDate(mine.updatedAt) + "</span>" : "") + "</div>" +
+      (mine && mine.updatedAt ? '<span class="small">Guardada el ' + fmtDate(mine.updatedAt) + "</span>" : "") +
       '<div class="picker" role="group" aria-label="Tu calificación">' + picker + "</div>" +
       '<div class="field"><label for="dReview">Qué te pareció</label>' +
       '<textarea id="dReview" maxlength="4000" placeholder="Lo que más te gustó, lo que no, a quién se lo recomendarías…">' + esc(d.text) + "</textarea></div>" +
@@ -582,12 +582,20 @@
   function closeDetail() { S.openId = null; S.confirmDelete = false; S.audioEditing = false; $("detailLayer").hidden = true; }
 
   // ---------- Loading + realtime ----------
+  // Cada cuenta carga solo su propio estante; sin sesión no se pide nada.
+  function clearShelf() {
+    S.books = []; S.reviews = []; S.profiles = {}; S.notes = {};
+    S.loaded = false; S.loadError = false;
+  }
   function loadAll() {
+    if (!sb || !S.uid) { clearShelf(); renderAll(); return Promise.resolve(); }
+    var uid = S.uid;
     return Promise.all([
-      sb.from("books").select("*"),
-      sb.from("reviews").select("*"),
-      sb.from("profiles").select("id,name")
+      sb.from("books").select("*").eq("added_by", uid),
+      sb.from("reviews").select("*").eq("user_id", uid),
+      sb.from("profiles").select("id,name").eq("id", uid)
     ]).then(function (r) {
+      if (uid !== S.uid) return;
       S.books = must(r[0]).map(mapBook);
       S.reviews = must(r[1]).map(mapReview);
       var p = {}; must(r[2]).forEach(function (x) { p[x.id] = x.name; });
@@ -597,13 +605,14 @@
       maybeAskName();
       loadNotes();
     }).catch(function (e) {
+      if (uid !== S.uid) return;
       console.error("Error al cargar el estante:", e);
       S.loaded = true; S.loadError = true;
       renderAll();
     });
   }
   var reloadTimer = null;
-  function scheduleReload() { clearTimeout(reloadTimer); reloadTimer = setTimeout(loadAll, 250); }
+  function scheduleReload() { if (!S.uid) return; clearTimeout(reloadTimer); reloadTimer = setTimeout(loadAll, 250); }
 
   // ---------- Writes ----------
   function writeFailed(e) {
@@ -873,8 +882,8 @@
 
   // ---------- Entrar / crear cuenta / recuperar contraseña ----------
   var AUTH_MODES = {
-    login: { title: "Iniciar sesión", lede: "Entra para agregar libros, marcar tu avance y escribir reseñas. Sin sesión puedes ver el estante.", submit: "Entrar", name: false, email: true, pass: true, tabs: true },
-    signup: { title: "Crear cuenta", lede: "Crea tu cuenta gratis para agregar libros, marcar tu avance y escribir reseñas.", submit: "Crear cuenta", name: true, email: true, pass: true, tabs: true },
+    login: { title: "Iniciar sesión", lede: "Entra para ver tu estante: tus libros, tu avance, tus notas y tus reseñas.", submit: "Entrar", name: false, email: true, pass: true, tabs: true },
+    signup: { title: "Crear cuenta", lede: "Crea tu cuenta gratis y arma tu propio estante. Solo tú ves tus libros, tu avance y tus notas.", submit: "Crear cuenta", name: true, email: true, pass: true, tabs: true },
     reset: { title: "Recuperar contraseña", lede: "Escribe tu correo y te enviaremos un enlace para crear una contraseña nueva.", submit: "Enviar enlace", name: false, email: true, pass: false, tabs: false },
     newpass: { title: "Nueva contraseña", lede: "Escribe la contraseña nueva para tu cuenta.", submit: "Guardar contraseña", name: false, email: false, pass: true, tabs: false }
   };
@@ -1052,24 +1061,30 @@
   function setSession(session) {
     var uid = session && session.user ? session.user.id : null;
     S.userMeta = session && session.user ? session.user.user_metadata || {} : {};
-    if (uid === S.uid) return;
+    var firstAnswer = !S.authReady;
+    S.authReady = true;
+    if (uid === S.uid && !firstAnswer) return;
+    var changed = uid !== S.uid;
     S.uid = uid;
-    S.notes = {};
-    if (!uid) { S.nameAsked = false; $("notesLayer").hidden = true; notesDirty = false; }
-    else if (S.loaded) loadNotes();
-    renderAll();
-    if (S.openId) { renderAudio(); renderMine(); }
-    maybeAskName();
+    if (changed || firstAnswer) {
+      // Al cambiar de cuenta (o salir) no queda nada del estante anterior en pantalla.
+      if (changed) { closeDetail(); $("formLayer").hidden = true; }
+      $("notesLayer").hidden = true; notesDirty = false; clearTimeout(notesTimer);
+      if (!uid) S.nameAsked = false;
+      clearShelf();
+      renderAll();
+      loadAll();
+    }
   }
 
   renderAll();
+  if (!sb) S.authReady = true;
   if (sb) {
     sb.auth.getSession().then(function (res) { setSession(res.data && res.data.session); });
     sb.auth.onAuthStateChange(function (event, session) {
       setSession(session);
       if (event === "PASSWORD_RECOVERY") openLogin("newpass");
     });
-    loadAll();
     sb.channel("estante")
       .on("postgres_changes", { event: "*", schema: "public", table: "books" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)

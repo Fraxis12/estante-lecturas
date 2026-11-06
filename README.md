@@ -24,7 +24,4 @@ Sitio estático (HTML, CSS y JavaScript sin compilación) con [Supabase](https:/
 
 ## Quién puede hacer qué
 
-- **Cualquiera con el enlace:** ver el estante, las reseñas y abrir los audiolibros.
-- **Cualquiera:** crear su cuenta desde la página (*Entrar o crear cuenta*) y recuperar su contraseña por correo.
-- **Con sesión iniciada:** agregar y editar libros, subir portadas y marcar el avance. Solo quien agregó un libro puede eliminarlo.
-- **Cada persona:** solo puede escribir o borrar su propia reseña.
+Cada cuenta tiene su **propio estante**: libros, avance, reseñas y notas solo los ve y los cambia su dueño (lo imponen las reglas de la base de datos, no solo la página). Sin sesión se muestra únicamente la bienvenida para entrar o crear cuenta. Las portadas se guardan con nombres aleatorios en un bucket público.
