@@ -11,16 +11,30 @@
   var THEMES = [
     { bg: "linear-gradient(165deg,#1E5568,#0A1B26)", ink: "#F4F1E8", hi: "#5CC8F0", motif: "sun" },
     { bg: "linear-gradient(165deg,#7A2229,#2A0A0E)", ink: "#F7EDE3", hi: "#F2B544", motif: "arch" },
-    { bg: "linear-gradient(170deg,#EFE6D2,#C8B896)", ink: "#2B2118", hi: "#C23B2E", motif: "lines" },
+    { bg: "linear-gradient(170deg,#EFE6D2,#C8B896)", ink: "#2B2118", hi: "#C23B2E", motif: "band" },
     { bg: "linear-gradient(165deg,#2D3152,#0E0F21)", ink: "#ECEBF5", hi: "#E8615A", motif: "moon" },
-    { bg: "linear-gradient(165deg,#3E4C2B,#141A0D)", ink: "#F1F0E2", hi: "#E9C46A", motif: "waves" },
-    { bg: "linear-gradient(170deg,#DCE6EA,#A9BEC7)", ink: "#132530", hi: "#1C6E90", motif: "grid" },
-    { bg: "linear-gradient(165deg,#4C2A55,#160A1A)", ink: "#F3E9F5", hi: "#5CC8F0", motif: "stripes" },
+    { bg: "linear-gradient(165deg,#3E4C2B,#141A0D)", ink: "#F1F0E2", hi: "#E9C46A", motif: "hills" },
+    { bg: "linear-gradient(170deg,#DCE6EA,#A9BEC7)", ink: "#132530", hi: "#1C6E90", motif: "diamond" },
+    { bg: "linear-gradient(165deg,#4C2A55,#160A1A)", ink: "#F3E9F5", hi: "#5CC8F0", motif: "frame" },
     { bg: "linear-gradient(165deg,#1A1A1A,#2E2E2E)", ink: "#FFFFFF", hi: "#F2B544", motif: "moon" },
     { bg: "linear-gradient(165deg,#8A4B1E,#2B1406)", ink: "#FBEFD9", hi: "#FFD27A", motif: "sun" },
     { bg: "linear-gradient(170deg,#E8D9D4,#C39E94)", ink: "#2A1714", hi: "#7A2229", motif: "arch" }
   ];
   var SPEAKER = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4v-5Z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  // Iconos dibujados (un solo trazo de 1.8–2px) en lugar de emojis o símbolos de texto.
+  var ICON_PATHS = {
+    star: '<path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L12 3.6Z" fill="currentColor"/>',
+    play: '<path d="M8 5.5v13l10.5-6.5L8 5.5Z" fill="currentColor"/>',
+    pencil: '<path d="M4.5 19.5l1-4.2L15.8 5a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.7 18.5l-4.2 1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" fill="none"/><path d="M13.8 7l3.2 3.2" stroke="currentColor" stroke-width="1.8" fill="none"/>',
+    lock: '<rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" stroke-width="1.8" fill="none"/>',
+    chevronDown: '<path d="M6.5 9.5L12 15l5.5-5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    chevronUp: '<path d="M6.5 14.5L12 9l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    plus: '<path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>'
+  };
+  function icon(name, cls) {
+    return '<svg class="ic' + (cls ? " " + cls : "") + '" viewBox="0 0 24 24" aria-hidden="true">' + ICON_PATHS[name] + "</svg>";
+  }
+  function plural(n, one, many) { return n === 1 ? one : many; }
 
   var S = {
     books: [], reviews: [], profiles: {},
@@ -159,8 +173,8 @@
 
   // ---------- Pieces ----------
   function starsHtml(v, num) {
-    var full = Math.round(v), s = '<span class="stars" aria-label="' + (v ? v.toFixed(1) + " de 5" : "Sin calificar") + '">';
-    for (var i = 1; i <= 5; i++) s += i <= full ? "★" : '<span class="off">★</span>';
+    var full = Math.round(v), s = '<span class="stars" role="img" aria-label="' + (v ? v.toFixed(1) + " de 5 estrellas" : "Sin calificar") + '">';
+    for (var i = 1; i <= 5; i++) s += icon("star", i <= full ? "" : "off");
     if (num && v) s += '<span class="num">' + v.toFixed(1) + "</span>";
     return s + "</span>";
   }
@@ -227,42 +241,47 @@
     if (!S.books.length) { $("stats").innerHTML = ""; return; }
     var avg = ratings.length ? ratings.reduce(function (s, x) { return s + x; }, 0) / ratings.length : 0;
     $("stats").innerHTML =
-      '<span class="pill"><b>' + c["leido"] + "</b> leídos</span>" +
+      '<span class="pill"><b>' + c["leido"] + "</b> " + plural(c["leido"], "leído", "leídos") + "</span>" +
       '<span class="pill"><b>' + c["leyendo"] + "</b> leyendo</span>" +
       '<span class="pill"><b>' + c["por-leer"] + "</b> por leer</span>" +
-      '<span class="pill"><b>' + pages.toLocaleString("es") + "</b> páginas leídas</span>" +
-      '<span class="pill"><b>' + audio + "</b> audiolibros</span>" +
-      '<span class="pill"><b class="g">★ ' + (avg ? avg.toFixed(1) : "—") + "</b> nota media</span>";
+      '<span class="pill"><b>' + pages.toLocaleString("es") + "</b> " + plural(pages, "página leída", "páginas leídas") + "</span>" +
+      '<span class="pill"><b>' + audio + "</b> " + plural(audio, "audiolibro", "audiolibros") + "</span>" +
+      '<span class="pill"><b class="g">' + icon("star") + (avg ? avg.toFixed(1) : "—") + "</b> nota media</span>";
   }
 
-  function renderSpot() {
-    var el = $("spot");
+  // El libro en curso más reciente se destaca arriba; las filas no lo repiten.
+  function spotBook() {
+    if (S.q.trim()) return null;
     var reading = S.books.filter(function (b) { return b.status === "leyendo"; })
       .sort(function (a, b) { return b.startedAt - a.startedAt; });
-    if (!reading.length || S.q.trim()) { el.hidden = true; el.innerHTML = ""; return; }
-    var b = reading[0], th = themeOf(b);
+    return reading[0] || null;
+  }
+  function renderSpot() {
+    var el = $("spot");
+    var b = spotBook();
+    if (!b) { el.hidden = true; el.innerHTML = ""; return; }
+    var th = themeOf(b);
     var bg = b.coverPath ? "background-image:url('" + esc(coverUrl(b.coverPath)) + "')" : "background:" + th.bg;
-    el.className = "spot";
     el.hidden = false;
-    el.innerHTML = '<div class="spot-bg" style="' + bg + '"></div><div class="spot-in">' +
+    el.innerHTML = '<div class="row-head"><h2>Continuar leyendo</h2></div>' +
+      '<div class="spot"><div class="spot-bg" style="' + bg + '"></div><div class="spot-in">' +
       '<button class="cover-btn" type="button" data-open="' + esc(b.id) + '" aria-label="Abrir ' + esc(b.title) + '">' + coverHtml(b) + "</button>" +
       "<div>" +
-      '<p class="kicker">Continuar leyendo</p>' +
-      "<h2>" + esc(b.title) + "</h2>" +
+      "<h3>" + esc(b.title) + "</h3>" +
       '<p class="by">' + esc(b.author || "Autor desconocido") + (b.genre ? ' · <span style="color:var(--cyan)">' + esc(b.genre) + "</span>" : "") + "</p>" +
       (progTotal(b) ? '<div class="bar"><span style="width:' + pct(b) + '%"></span></div><p class="pg">' + progLabel(b) + "</p>"
         : '<p class="pg">' + (progCurrent(b) ? progLabel(b) : "Marca tu avance desde la ficha del libro.") + "</p>") +
       '<div class="actions">' +
       (b.audioUrl ? audioLink(b, "btn gold", '<span style="width:18px;height:18px;display:inline-grid">' + SPEAKER + "</span> Escuchar en " + esc(audioHost(b.audioUrl))) : "") +
       '<button class="btn" type="button" data-open="' + esc(b.id) + '">Abrir ficha</button>' +
-      "</div></div></div>";
+      "</div></div></div></div>";
   }
 
   function rowHtml(key, title, list) {
     if (!list.length) return "";
     var open = !!S.expanded[key];
     var more = list.length > 6
-      ? '<button class="more" type="button" data-expand="' + key + '" aria-expanded="' + open + '">' + (open ? "Ver menos" : "Ver " + (list.length - 6) + " más") + ' <span class="tri">' + (open ? "▲" : "▼") + "</span></button>"
+      ? '<button class="more" type="button" data-expand="' + key + '" aria-expanded="' + open + '">' + (open ? "Ver menos" : "Ver " + (list.length - 6) + " más") + icon(open ? "chevronUp" : "chevronDown") + "</button>"
       : "";
     return '<section><div class="row-head"><h2>' + title + '<span class="c">' + list.length + "</span></h2>" + more + "</div>" +
       '<div class="' + (open ? "grid" : "scroller") + '">' + list.map(cardHtml).join("") + "</div></section>";
@@ -283,7 +302,7 @@
       el.innerHTML = '<div class="empty"><div class="ghosts" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' +
         "<h2>El estante está vacío</h2>" +
         "<p>Agrega el primer libro: puedes subir su portada, pegar la playlist del audiolibro y, cuando lo termines, dejar tu reseña.</p>" +
-        (S.uid ? '<button class="btn primary" type="button" data-action="add">+ Agregar el primer libro</button>'
+        (S.uid ? '<button class="btn primary" type="button" data-action="add">' + icon("plus") + "Agregar el primer libro</button>"
                : '<button class="btn primary" type="button" data-action="signup">Crear cuenta para agregar libros</button>') + "</div>";
       return;
     }
@@ -299,8 +318,11 @@
     }
     var by = function (st) { return S.books.filter(function (b) { return b.status === st; }); };
     var recent = function (a, b) { return b.createdAt - a.createdAt; };
+    var spot = spotBook();
+    var alsoReading = by("leyendo").filter(function (b) { return !spot || b.id !== spot.id; })
+      .sort(function (a, b) { return b.startedAt - a.startedAt; });
     el.innerHTML =
-      rowHtml("leyendo", "Leyendo ahora", by("leyendo").sort(function (a, b) { return b.startedAt - a.startedAt; })) +
+      rowHtml("leyendo", "También leyendo", alsoReading) +
       rowHtml("audio", "Audiolibros", S.books.filter(function (b) { return b.audioUrl; }).sort(recent)) +
       rowHtml("por-leer", "Por leer", by("por-leer").sort(recent)) +
       rowHtml("leido", "Leídos", by("leido").sort(function (a, b) { return b.finishedAt - a.finishedAt; }));
@@ -318,8 +340,7 @@
   function renderDetail() {
     var b = findBook(S.openId);
     if (!b) { closeDetail(); return; }
-    $("dCall").textContent = callNumber(b.id) + " · " + (STATUS[b.status] || "");
-    var facts = [];
+    var facts = [["Catálogo", callNumber(b.id)]];
     if (b.year) facts.push(["Año", esc(b.year)]);
     if (b.pages) facts.push(["Páginas", esc(b.pages)]);
     if (b.chapters) facts.push(["Capítulos", esc(b.chapters)]);
@@ -400,7 +421,7 @@
   function renderNotesSection() {
     var el = $("dNotes");
     if (!el || !S.openId) return;
-    var h = '<h3>Mis notas<span class="lock">🔒 solo tú las ves</span></h3>';
+    var h = '<h3>Mis notas<span class="lock">' + icon("lock") + "solo tú las ves</span></h3>";
     if (!S.uid) {
       el.innerHTML = h + '<div class="actions"><button class="btn" type="button" data-action="login">Inicia sesión para escribir tus notas</button></div>';
       return;
@@ -412,10 +433,10 @@
     var n = S.notes[S.openId], body = n && n.body.trim();
     el.innerHTML = h + (body
       ? '<div class="note-card">' + esc(body.slice(0, 600)) + "</div>" +
-        '<div class="actions"><button class="btn primary" type="button" data-action="notes-open">✎ Abrir mis notas</button>' +
+        '<div class="actions"><button class="btn primary" type="button" data-action="notes-open">' + icon("pencil") + "Abrir mis notas</button>" +
         '<span class="small">Editadas el ' + fmtDate(n.updatedAt) + "</span></div>"
       : '<p class="notice">Un cuaderno para este libro: ideas, frases que te marcaron, preguntas o reflexiones mientras lees.</p>' +
-        '<div class="actions"><button class="btn primary" type="button" data-action="notes-open">✎ Empezar a escribir</button></div>');
+        '<div class="actions"><button class="btn primary" type="button" data-action="notes-open">' + icon("pencil") + "Empezar a escribir</button></div>");
   }
 
   var notesTimer = null, notesDirty = false, notesSaving = false;
@@ -514,7 +535,7 @@
       h += '<div class="audio-box"><div class="ic">' + SPEAKER + "</div><div>" +
         '<div class="t">Playlist en ' + esc(audioHost(b.audioUrl)) + "</div>" +
         '<div class="host">' + esc(b.audioUrl) + "</div></div></div>" +
-        '<div class="actions">' + audioLink(b, "btn gold", "▶ Escuchar ahora") +
+        '<div class="actions">' + audioLink(b, "btn gold", icon("play") + "Escuchar ahora") +
         (S.uid ? '<button class="btn" type="button" data-action="audio-edit">Cambiar enlace</button>' : "") + "</div>";
     } else if (S.uid) {
       h += '<div class="field"><label for="dAudioUrl">Pega aquí el enlace de la playlist</label>' +
@@ -537,7 +558,7 @@
     }
     var d = S.draft, mine = myReview(S.openId), picker = "";
     for (var i = 1; i <= 5; i++) {
-      picker += '<button type="button" data-rate="' + i + '" class="' + (i <= d.rating ? "" : "off") + '" aria-label="' + i + (i === 1 ? " estrella" : " estrellas") + '" aria-pressed="' + (i === d.rating) + '">★</button>';
+      picker += '<button type="button" data-rate="' + i + '" class="' + (i <= d.rating ? "" : "off") + '" aria-label="' + i + (i === 1 ? " estrella" : " estrellas") + '" aria-pressed="' + (i === d.rating) + '">' + icon("star") + "</button>";
     }
     el.innerHTML = '<div class="mine">' +
       '<div class="actions" style="justify-content:space-between"><b>Tu reseña</b>' + (mine && mine.updatedAt ? '<span class="small">Guardada el ' + fmtDate(mine.updatedAt) + "</span>" : "") + "</div>" +

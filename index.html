@@ -26,7 +26,7 @@
       </div>
       <div class="top-actions">
         <input class="search" id="q" type="search" placeholder="Buscar título, autor o género" aria-label="Buscar título, autor o género">
-        <button class="btn primary" id="addBtn" type="button" hidden>+ Agregar libro</button>
+        <button class="btn primary" id="addBtn" type="button" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Agregar libro</button>
         <div id="authArea"></div>
       </div>
     </header>
@@ -40,9 +40,8 @@
   <div id="detailLayer" hidden>
     <div class="scrim" data-close="detail"></div>
     <aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="dTitle">
-      <div class="sheet-bar">
-        <span class="eyebrow" id="dCall"></span>
-        <button class="x" type="button" data-close="detail" aria-label="Cerrar">×</button>
+      <div class="sheet-bar end">
+        <button class="x" type="button" data-close="detail" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
       </div>
       <div id="dHead"></div>
       <div id="dAudio" class="section"></div>
@@ -63,19 +62,19 @@
     <aside class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="nbTitle">
       <div class="sheet-bar">
         <div>
-          <span class="eyebrow" id="nbBook"></span>
           <h2 id="nbTitle">Mis notas</h2>
+          <p class="nb-book" id="nbBook"></p>
         </div>
-        <button class="x" type="button" data-close="notes" aria-label="Cerrar">×</button>
+        <button class="x" type="button" data-close="notes" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
       </div>
       <div class="nb-tools">
-        <button class="btn" type="button" id="nbMark" title="Inserta en qué capítulo o página vas y la fecha">+ Marca de avance</button>
-        <button class="btn" type="button" id="nbQuote" title="Para copiar una frase del libro">❝ Cita</button>
+        <button class="btn" type="button" id="nbMark" title="Inserta en qué capítulo o página vas y la fecha"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v15l-5-3.6-5 3.6v-15Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" fill="none"/></svg>Marca de avance</button>
+        <button class="btn" type="button" id="nbQuote" title="Para copiar una frase del libro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17.5c0-4 1.5-7.2 4.6-9.5l1 1.3C8.9 10.8 8.2 12.4 8.1 14H10v3.5H5Zm8 0c0-4 1.5-7.2 4.6-9.5l1 1.3c-1.7 1.5-2.4 3.1-2.5 4.7H18v3.5h-5Z" fill="currentColor"/></svg>Cita</button>
         <span class="nb-status" id="nbStatus" role="status"></span>
       </div>
       <textarea id="nbText" class="notebook" maxlength="50000" aria-label="Notas del libro"
         placeholder="Ideas que te llamaron la atención, frases para recordar, preguntas, reflexiones…"></textarea>
-      <p class="small">🔒 Tus notas son privadas: solo tú las ves. Se guardan solas mientras escribes.</p>
+      <p class="small with-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>Tus notas son privadas: solo tú las ves. Se guardan solas mientras escribes.</p>
     </aside>
   </div>
 
@@ -85,7 +84,7 @@
     <aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="fTitle">
       <div class="sheet-bar">
         <h2 id="fTitle">Agregar libro</h2>
-        <button class="x" type="button" data-close="form" aria-label="Cerrar">×</button>
+        <button class="x" type="button" data-close="form" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
       </div>
       <form id="bookForm" class="section" novalidate>
         <div class="field">
@@ -169,7 +168,7 @@
     <aside class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="lTitle">
       <div class="sheet-bar">
         <h2 id="lTitle">Iniciar sesión</h2>
-        <button class="x" type="button" data-close="login" aria-label="Cerrar">×</button>
+        <button class="x" type="button" data-close="login" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
       </div>
       <div class="seg two" id="authTabs" role="group" aria-label="Entrar o crear cuenta">
         <button type="button" data-auth-mode="login" aria-pressed="true">Entrar</button>
@@ -198,7 +197,7 @@
         </div>
         <div class="actions">
           <button class="link" type="button" id="lForgot" data-auth-mode="reset">¿Olvidaste tu contraseña?</button>
-          <button class="link" type="button" id="lBack" data-auth-mode="login" hidden>← Volver a entrar</button>
+          <button class="link" type="button" id="lBack" data-auth-mode="login" hidden>Volver a entrar</button>
         </div>
       </form>
     </aside>
@@ -210,7 +209,7 @@
     <aside class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="nTitle">
       <div class="sheet-bar">
         <h2 id="nTitle">Tu nombre</h2>
-        <button class="x" type="button" data-close="name" aria-label="Cerrar">×</button>
+        <button class="x" type="button" data-close="name" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
       </div>
       <p class="lede">Así aparecerás en tus reseñas y en los libros que agregues.</p>
       <form id="nameForm" class="section" novalidate>
