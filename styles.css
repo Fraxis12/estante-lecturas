@@ -296,6 +296,10 @@ h1 { font-weight: 600; font-size: clamp(24px, 3.6vw, 32px); line-height: 1.1; ma
 .seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--bg-raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px; gap: 4px; }
 .seg button { border: none; background: none; border-radius: 999px; padding: 8px 6px; font-size: 14px; color: var(--soft); }
 .seg button[aria-pressed="true"] { background: var(--cyan); color: var(--cyan-ink); font-weight: 600; }
+.seg.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.link { background: none; border: none; padding: 2px 0; color: var(--cyan); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--ink); }
+.ok { color: #6FD39A; font-size: 14px; margin: 0; }
 .page-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--soft); }
 .page-row input { width: 100px; }
 .pbar { height: 5px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; }

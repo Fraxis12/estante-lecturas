@@ -127,7 +127,7 @@
     </aside>
   </div>
 
-  <!-- Iniciar sesión -->
+  <!-- Entrar / crear cuenta / recuperar contraseña -->
   <div id="loginLayer" hidden>
     <div class="scrim" data-close="login"></div>
     <aside class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="lTitle">
@@ -135,21 +135,35 @@
         <h2 id="lTitle">Iniciar sesión</h2>
         <button class="x" type="button" data-close="login" aria-label="Cerrar">×</button>
       </div>
-      <p class="lede">Entra para agregar libros, marcar tu avance y escribir reseñas. Sin sesión puedes ver el estante.</p>
+      <div class="seg two" id="authTabs" role="group" aria-label="Entrar o crear cuenta">
+        <button type="button" data-auth-mode="login" aria-pressed="true">Entrar</button>
+        <button type="button" data-auth-mode="signup" aria-pressed="false">Crear cuenta</button>
+      </div>
+      <p class="lede" id="lLede"></p>
       <form id="loginForm" class="section" novalidate>
-        <div class="field">
-          <label for="lEmail">Correo</label>
-          <input id="lEmail" type="email" autocomplete="email" required>
+        <div class="field" id="lNameField">
+          <label for="lName">Tu nombre</label>
+          <input id="lName" type="text" maxlength="60" autocomplete="name">
+          <span class="hint">Así aparecerás en tus reseñas.</span>
         </div>
-        <div class="field">
-          <label for="lPass">Contraseña</label>
-          <input id="lPass" type="password" autocomplete="current-password" required>
+        <div class="field" id="lEmailField">
+          <label for="lEmail">Correo</label>
+          <input id="lEmail" type="email" autocomplete="email">
+        </div>
+        <div class="field" id="lPassField">
+          <label for="lPass" id="lPassLabel">Contraseña</label>
+          <input id="lPass" type="password" autocomplete="current-password">
+          <span class="hint" id="lPassHint" hidden>Mínimo 6 caracteres.</span>
         </div>
         <p class="err" id="lError" hidden></p>
+        <p class="ok" id="lOk" hidden></p>
         <div class="actions">
           <button class="btn primary" type="submit" id="lSubmit">Entrar</button>
         </div>
-        <p class="small">¿No tienes cuenta? Pídele acceso a quien administra el estante.</p>
+        <div class="actions">
+          <button class="link" type="button" id="lForgot" data-auth-mode="reset">¿Olvidaste tu contraseña?</button>
+          <button class="link" type="button" id="lBack" data-auth-mode="login" hidden>← Volver a entrar</button>
+        </div>
       </form>
     </aside>
   </div>

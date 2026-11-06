@@ -42,7 +42,7 @@ grant insert, update, delete on public.books, public.reviews, public.profiles to
 
 -- ---------- Reglas (Row Level Security) ----------
 -- Cualquiera con el enlace puede VER el estante.
--- Solo quien inició sesión puede agregar o cambiar libros.
+-- Solo quien inició sesión puede agregar o cambiar libros, y solo quien agregó un libro puede eliminarlo.
 -- Cada persona solo puede escribir su propia reseña y su propio nombre.
 alter table public.profiles enable row level security;
 alter table public.books    enable row level security;
@@ -55,7 +55,7 @@ create policy "profiles: editar propio" on public.profiles for update to authent
 create policy "books: leer"     on public.books for select using (true);
 create policy "books: agregar"  on public.books for insert to authenticated with check (true);
 create policy "books: editar"   on public.books for update to authenticated using (true) with check (true);
-create policy "books: eliminar" on public.books for delete to authenticated using (true);
+create policy "books: eliminar propio" on public.books for delete to authenticated using (added_by = auth.uid());
 
 create policy "reviews: leer"          on public.reviews for select using (true);
 create policy "reviews: crear propia"  on public.reviews for insert to authenticated with check (user_id = auth.uid());

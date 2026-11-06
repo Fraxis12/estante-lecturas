@@ -16,14 +16,15 @@ Sitio estático (HTML, CSS y JavaScript sin compilación) con [Supabase](https:/
 
 ## Puesta en marcha
 
-1. **Supabase → SQL Editor:** pegar `supabase.sql` completo y ejecutarlo una vez.
-2. **Supabase → Authentication → Users → Add user:** crear la cuenta de cada lector (correo y contraseña, con *Auto Confirm User*).
-3. **Supabase → Authentication → Sign In / Providers:** desactivar *Allow new users to sign up*, para que solo entren las cuentas creadas en el paso 2.
+1. **Supabase → SQL Editor:** pegar `supabase.sql` completo y ejecutarlo una vez. (Si ya se había ejecutado una versión anterior, correr también los archivos de `migraciones/`.)
+2. **Supabase → Authentication → Sign In / Providers:** activar *Allow new users to sign up* para que cada lector cree su cuenta desde la página. *Confirm email* decide si deben abrir un enlace en su correo antes de entrar.
+3. **Supabase → Authentication → URL Configuration:** poner la dirección de Vercel en *Site URL* (la usan los correos de confirmación y de recuperar contraseña).
 4. **`config.js`:** poner la *Project URL* y la clave *publishable* (o *anon*) de **Project Settings → API**. Nunca la clave *secret* / *service_role*.
 5. **Vercel → Add New → Project:** importar este repositorio, sin cambiar nada, y pulsar *Deploy*.
 
 ## Quién puede hacer qué
 
 - **Cualquiera con el enlace:** ver el estante, las reseñas y abrir los audiolibros.
-- **Con sesión iniciada:** agregar, editar y eliminar libros, subir portadas y marcar el avance.
+- **Cualquiera:** crear su cuenta desde la página (*Entrar o crear cuenta*) y recuperar su contraseña por correo.
+- **Con sesión iniciada:** agregar y editar libros, subir portadas y marcar el avance. Solo quien agregó un libro puede eliminarlo.
 - **Cada persona:** solo puede escribir o borrar su propia reseña.

@@ -192,7 +192,7 @@
         "<span>" + esc(S.profiles[S.uid] || "Tu perfil") + "</span></button>";
       el.firstChild.style.padding = "4px 14px 4px 4px";
     } else {
-      el.innerHTML = '<button class="btn" type="button" data-action="login">Iniciar sesión</button>';
+      el.innerHTML = '<button class="btn" type="button" data-action="login">Entrar o crear cuenta</button>';
     }
     $("addBtn").hidden = !S.uid;
   }
@@ -265,7 +265,7 @@
         "<h2>El estante está vacío</h2>" +
         "<p>Agrega el primer libro: puedes subir su portada, pegar la playlist del audiolibro y, cuando lo termines, dejar tu reseña.</p>" +
         (S.uid ? '<button class="btn primary" type="button" data-action="add">+ Agregar el primer libro</button>'
-               : '<button class="btn primary" type="button" data-action="login">Iniciar sesión para agregar libros</button>') + "</div>";
+               : '<button class="btn primary" type="button" data-action="signup">Crear cuenta para agregar libros</button>') + "</div>";
       return;
     }
     var q = S.q.trim().toLowerCase();
@@ -336,7 +336,10 @@
     }).join("") : (S.uid ? "" : '<p class="notice">Todavía nadie ha dejado una reseña.</p>');
 
     var m = "";
-    if (S.uid) {
+    if (S.uid && b.addedBy !== S.uid) {
+      m = '<div class="actions"><button class="btn" type="button" data-action="edit">Editar libro y portada</button></div>' +
+        '<p class="small">Solo quien agregó este libro puede eliminarlo.</p>';
+    } else if (S.uid) {
       m = S.confirmDelete
         ? '<div class="confirm"><span>¿Eliminar «' + esc(b.title) + '» del estante? Esto no se puede deshacer.</span>' +
           '<button class="btn danger solid" type="button" data-action="delete-yes"' + dis + ">Sí, eliminar</button>" +
@@ -648,35 +651,105 @@
     });
   });
 
-  // ---------- Login + profile ----------
-  function openLogin() {
+  // ---------- Entrar / crear cuenta / recuperar contraseña ----------
+  var AUTH_MODES = {
+    login: { title: "Iniciar sesión", lede: "Entra para agregar libros, marcar tu avance y escribir reseñas. Sin sesión puedes ver el estante.", submit: "Entrar", name: false, email: true, pass: true, tabs: true },
+    signup: { title: "Crear cuenta", lede: "Crea tu cuenta gratis para agregar libros, marcar tu avance y escribir reseñas.", submit: "Crear cuenta", name: true, email: true, pass: true, tabs: true },
+    reset: { title: "Recuperar contraseña", lede: "Escribe tu correo y te enviaremos un enlace para crear una contraseña nueva.", submit: "Enviar enlace", name: false, email: true, pass: false, tabs: false },
+    newpass: { title: "Nueva contraseña", lede: "Escribe la contraseña nueva para tu cuenta.", submit: "Guardar contraseña", name: false, email: false, pass: true, tabs: false }
+  };
+  var authMode = "login";
+
+  function authMsg(kind, text) {
+    $("lError").hidden = kind !== "err";
+    $("lOk").hidden = kind !== "ok";
+    if (kind === "err") $("lError").textContent = text;
+    if (kind === "ok") $("lOk").textContent = text;
+  }
+  function setAuthMode(mode) {
+    var m = AUTH_MODES[mode];
+    authMode = mode;
+    $("lTitle").textContent = m.title;
+    $("lLede").textContent = m.lede;
+    $("lSubmit").textContent = m.submit;
+    $("lNameField").hidden = !m.name;
+    $("lEmailField").hidden = !m.email;
+    $("lPassField").hidden = !m.pass;
+    $("authTabs").hidden = !m.tabs;
+    var isNew = mode === "signup" || mode === "newpass";
+    $("lPass").setAttribute("autocomplete", isNew ? "new-password" : "current-password");
+    $("lPassLabel").textContent = mode === "newpass" ? "Contraseña nueva" : "Contraseña";
+    $("lPassHint").hidden = !isNew;
+    $("lForgot").hidden = mode !== "login";
+    $("lBack").hidden = mode !== "reset";
+    document.querySelectorAll("#authTabs [data-auth-mode]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-auth-mode") === mode));
+    });
+    authMsg(null);
+    var first = m.name ? "lName" : (m.email ? "lEmail" : "lPass");
+    if (!$("loginLayer").hidden) $(first).focus();
+  }
+  function openLogin(mode) {
     if (!sb) return;
-    $("lError").hidden = true;
     $("loginLayer").hidden = false;
-    $("lEmail").focus();
+    setAuthMode(mode || "login");
   }
   function closeLogin() { $("loginLayer").hidden = true; $("lPass").value = ""; }
+
+  function authError(err) {
+    var msg = String((err && err.message) || "");
+    if (/already registered|already exists/i.test(msg)) return "Ese correo ya tiene una cuenta. Usa la pestaña Entrar.";
+    if (/signups? not allowed|signup.*disabled/i.test(msg)) return "Los registros nuevos están cerrados por ahora.";
+    if (/password.*(6|short|least)/i.test(msg)) return "La contraseña debe tener al menos 6 caracteres.";
+    if (/rate limit|too many/i.test(msg)) return "Se enviaron demasiados correos. Espera unos minutos e inténtalo otra vez.";
+    if (/invalid.*email|email.*invalid/i.test(msg)) return "Ese correo no parece válido.";
+    if (/not confirmed/i.test(msg)) return "Tu correo todavía no está confirmado. Abre el enlace que te enviamos.";
+    if (/invalid login credentials/i.test(msg)) return "Correo o contraseña incorrectos.";
+    return "No se pudo completar. Revisa tu conexión e inténtalo otra vez.";
+  }
+
   $("loginForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var email = $("lEmail").value.trim(), pass = $("lPass").value;
-    if (!email || !pass) { $("lError").textContent = "Escribe tu correo y tu contraseña."; $("lError").hidden = false; return; }
+    var name = $("lName").value.trim(), email = $("lEmail").value.trim(), pass = $("lPass").value;
+    var m = AUTH_MODES[authMode];
+    if (m.name && !name) { authMsg("err", "Escribe tu nombre."); $("lName").focus(); return; }
+    if (m.email && !email) { authMsg("err", "Escribe tu correo."); $("lEmail").focus(); return; }
+    if (m.pass && pass.length < 6) { authMsg("err", "La contraseña debe tener al menos 6 caracteres."); $("lPass").focus(); return; }
+
+    var here = location.origin + location.pathname;
+    var call;
+    if (authMode === "login") call = sb.auth.signInWithPassword({ email: email, password: pass });
+    else if (authMode === "signup") call = sb.auth.signUp({ email: email, password: pass, options: { data: { name: name }, emailRedirectTo: here } });
+    else if (authMode === "reset") call = sb.auth.resetPasswordForEmail(email, { redirectTo: here });
+    else call = sb.auth.updateUser({ password: pass });
+
     $("lSubmit").disabled = true;
-    sb.auth.signInWithPassword({ email: email, password: pass }).then(function (res) {
+    call.then(function (res) {
       $("lSubmit").disabled = false;
-      if (res.error) {
-        $("lError").textContent = /confirm/i.test(res.error.message)
-          ? "Tu correo todavía no está confirmado. Revisa tu bandeja de entrada."
-          : "Correo o contraseña incorrectos.";
-        $("lError").hidden = false;
+      if (res.error) { authMsg("err", authError(res.error)); return; }
+      if (authMode === "login") { closeLogin(); toast("Sesión iniciada."); return; }
+      if (authMode === "signup") {
+        if (res.data && res.data.session) { closeLogin(); toast("¡Bienvenido, " + name + "! Ya puedes agregar libros."); return; }
+        authMsg("ok", "Te enviamos un correo a " + email + ". Abre el enlace para activar tu cuenta y vuelve aquí.");
+        $("lPass").value = "";
         return;
       }
-      closeLogin();
-      toast("Sesión iniciada.");
+      if (authMode === "reset") { authMsg("ok", "Si " + email + " tiene una cuenta, te llegará un correo con el enlace en unos minutos."); return; }
+      closeLogin(); toast("Contraseña actualizada.");
+    }, function () {
+      $("lSubmit").disabled = false;
+      authMsg("err", "No se pudo completar. Revisa tu conexión e inténtalo otra vez.");
     });
   });
 
+  // Al crear la cuenta el nombre viaja con el registro: se guarda solo en el perfil.
   function maybeAskName() {
-    if (S.uid && S.loaded && !S.profiles[S.uid] && !S.nameAsked) { S.nameAsked = true; openName(); }
+    if (!S.uid || !S.loaded || S.profiles[S.uid] || S.nameAsked) return;
+    S.nameAsked = true;
+    var metaName = String((S.userMeta && S.userMeta.name) || "").trim().slice(0, 60);
+    if (!metaName) { openName(); return; }
+    sb.from("profiles").upsert({ id: S.uid, name: metaName, updated_at: nowIso() })
+      .then(must).then(loadAll).catch(function () { openName(); });
   }
   function openName() {
     $("nName").value = S.profiles[S.uid] || "";
@@ -709,6 +782,7 @@
     if (close === "login") { closeLogin(); return; }
     if (close === "name") { closeName(); return; }
     if (t.id === "addBtn") { openForm(null); return; }
+    if (t.hasAttribute("data-auth-mode")) { setAuthMode(t.getAttribute("data-auth-mode")); return; }
     if (t.hasAttribute("data-expand")) { var k = t.getAttribute("data-expand"); S.expanded[k] = !S.expanded[k]; renderRows(); return; }
     if (t.hasAttribute("data-open")) { openDetail(t.getAttribute("data-open")); return; }
     if (t.hasAttribute("data-status")) { setStatus(S.openId, t.getAttribute("data-status")); return; }
@@ -720,7 +794,8 @@
     }
     switch (t.getAttribute("data-action")) {
       case "add": openForm(null); break;
-      case "login": openLogin(); break;
+      case "login": openLogin("login"); break;
+      case "signup": openLogin("signup"); break;
       case "profile": openName(); break;
       case "edit": openForm(S.openId); break;
       case "delete-ask": S.confirmDelete = true; renderDetail(); break;
@@ -749,6 +824,7 @@
   // ---------- Boot ----------
   function setSession(session) {
     var uid = session && session.user ? session.user.id : null;
+    S.userMeta = session && session.user ? session.user.user_metadata || {} : {};
     if (uid === S.uid) return;
     S.uid = uid;
     if (!uid) S.nameAsked = false;
@@ -760,7 +836,10 @@
   renderAll();
   if (sb) {
     sb.auth.getSession().then(function (res) { setSession(res.data && res.data.session); });
-    sb.auth.onAuthStateChange(function (_event, session) { setSession(session); });
+    sb.auth.onAuthStateChange(function (event, session) {
+      setSession(session);
+      if (event === "PASSWORD_RECOVERY") openLogin("newpass");
+    });
     loadAll();
     sb.channel("estante")
       .on("postgres_changes", { event: "*", schema: "public", table: "books" }, scheduleReload)
