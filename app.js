@@ -29,7 +29,8 @@
     lock: '<rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" stroke-width="1.8" fill="none"/>',
     chevronDown: '<path d="M6.5 9.5L12 15l5.5-5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
     chevronUp: '<path d="M6.5 14.5L12 9l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
-    plus: '<path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>'
+    plus: '<path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>',
+    quill: '<path d="M19.5 4.5c-6.2.4-10.6 4.6-11.9 11.3L6 19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M19.5 4.5c.2 5.2-3 9.6-9.4 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M19.5 4.5L10 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>'
   };
   function icon(name, cls) {
     return '<svg class="ic' + (cls ? " " + cls : "") + '" viewBox="0 0 24 24" aria-hidden="true">' + ICON_PATHS[name] + "</svg>";
@@ -46,6 +47,7 @@
     nameAsked: false,
     authReady: false,
     activity: {}, streakMissing: false,
+    myBooks: [], myBooksLoaded: false, myBooksMissing: false,
     notes: {}, notesMissing: false, notesBookId: null,
     busy: false
   };
@@ -347,6 +349,7 @@
     renderSpot();
     renderRows();
     renderStreak();
+    renderMyBookCard();
     if (S.openId) renderDetail();
   }
 
@@ -667,6 +670,182 @@
     return list.length ? list[0].id : null;
   }
 
+  // ---------- Mi libro: escritura propia (independiente de la racha) ----------
+  var W = { id: null, dirty: false, saving: false, timer: null, confirmDelete: false };
+
+  function wordCount(t) { t = String(t || "").trim(); return t ? t.split(/\s+/).length : 0; }
+  function myBookTitle(m) { return (m && m.title) || "Sin título"; }
+
+  function loadMyBooks() {
+    if (!sb || !S.uid) return;
+    var uid = S.uid;
+    sb.from("my_books").select("id,title,word_count,updated_at").order("updated_at", { ascending: false }).then(function (res) {
+      if (uid !== S.uid) return;
+      S.myBooksLoaded = true;
+      if (res.error) { S.myBooksMissing = tableMissing(res.error, "my_books"); S.myBooks = []; renderMyBookCard(); return; }
+      S.myBooksMissing = false;
+      S.myBooks = res.data.map(function (r) { return { id: r.id, title: r.title || "", words: r.word_count || 0, updatedAt: Date.parse(r.updated_at) || 0 }; });
+      renderMyBookCard();
+    });
+  }
+
+  function renderMyBookCard() {
+    var el = $("myBookCard");
+    if (!S.uid || !S.loaded || !S.myBooksLoaded || S.q.trim()) { el.hidden = true; return; }
+    el.hidden = false;
+    var h = '<div class="row-head"><h2>Mi libro</h2></div>';
+    if (S.myBooksMissing) {
+      el.innerHTML = h + '<div class="mybook"><p class="notice">Para empezar a escribir tu libro falta activar esta función en la base de datos (migración 007).</p></div>';
+      return;
+    }
+    if (!S.myBooks.length) {
+      el.innerHTML = h + '<div class="mybook">' + icon("quill") +
+        '<div class="mybook-text"><h3>¿Tienes una historia en mente?</h3>' +
+        "<p>Escribe tu propio libro a tu ritmo, en tus ratos libres. Es tu espacio privado y se guarda solo mientras escribes.</p></div>" +
+        '<button class="btn primary" type="button" data-action="write-new">' + icon("pencil") + "Empezar a escribir</button></div>";
+      return;
+    }
+    var latest = S.myBooks[0];
+    el.innerHTML = h + '<div class="mybook">' + icon("quill") +
+      '<div class="mybook-text"><h3>' + esc(myBookTitle(latest)) + "</h3>" +
+      "<p>" + latest.words.toLocaleString("es") + " " + plural(latest.words, "palabra", "palabras") + " · editado el " + fmtDate(latest.updatedAt) + "</p>" +
+      (S.myBooks.length > 1 ? '<div class="mybook-others">' + S.myBooks.slice(1).map(function (m) {
+        return '<button class="link" type="button" data-write="' + esc(m.id) + '">' + esc(myBookTitle(m)) + "</button>";
+      }).join("") + "</div>" : "") +
+      "</div>" +
+      '<div class="actions"><button class="btn primary" type="button" data-write="' + esc(latest.id) + '">' + icon("pencil") + "Seguir escribiendo</button>" +
+      '<button class="btn" type="button" data-action="write-new">' + icon("plus") + "Nuevo libro</button></div></div>";
+  }
+
+  function wStatus(text, kind) { var s = $("wStatus"); s.textContent = text; s.className = "nb-status" + (kind ? " " + kind : ""); }
+  function autoGrow() { var ta = $("wBody"); ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+  function renderWriteMeta() {
+    var body = $("wBody").value, words = wordCount(body);
+    $("wCount").textContent = words.toLocaleString("es") + " " + plural(words, "palabra", "palabras") + " · " +
+      body.length.toLocaleString("es") + " " + plural(body.length, "carácter", "caracteres");
+  }
+  function renderWritePick() {
+    var pick = $("wPick");
+    var list = S.myBooks.slice();
+    if (!W.id) list.unshift({ id: "", title: "Nuevo libro (sin guardar)" });
+    pick.hidden = list.length < 2;
+    pick.innerHTML = list.map(function (m) {
+      return '<option value="' + esc(m.id) + '"' + (m.id === (W.id || "") ? " selected" : "") + ">" + esc(m.id ? myBookTitle(m) : m.title) + "</option>";
+    }).join("");
+  }
+  function renderWriteDanger() {
+    var el = $("wDanger");
+    if (!W.id) { el.innerHTML = ""; return; }
+    el.innerHTML = W.confirmDelete
+      ? '<div class="confirm"><span>¿Eliminar «' + esc($("wTitle").value.trim() || "Sin título") + '» y todo su texto? No se puede deshacer.</span>' +
+        '<button class="btn danger solid" type="button" data-action="write-delete-yes">Sí, eliminar</button>' +
+        '<button class="btn" type="button" data-action="write-delete-no">Cancelar</button></div>'
+      : '<button class="link" type="button" data-action="write-delete-ask">Eliminar este libro</button>';
+  }
+
+  function openWrite(id) {
+    if (!S.uid) { openLogin("login"); return; }
+    W.id = id || null; W.dirty = false; W.confirmDelete = false;
+    clearTimeout(W.timer);
+    $("wTitle").value = "";
+    $("wBody").value = "";
+    $("writeLayer").hidden = false;
+    $("writeLayer").scrollTop = 0;
+    document.body.style.overflow = "hidden";
+    renderWritePick(); renderWriteMeta(); renderWriteDanger(); autoGrow();
+    if (!id) { wStatus("Libro nuevo: empieza por el título o directamente por el texto.", null); $("wTitle").focus(); return; }
+    wStatus("Abriendo…", null);
+    sb.from("my_books").select("title,body,updated_at").eq("id", id).maybeSingle().then(function (res) {
+      if (W.id !== id || W.dirty) return;
+      if (res.error || !res.data) { wStatus("No se pudo abrir este libro. Revisa tu conexión y vuelve a intentarlo.", "error"); return; }
+      $("wTitle").value = res.data.title || "";
+      $("wBody").value = res.data.body || "";
+      wStatus("Guardado el " + fmtDate(Date.parse(res.data.updated_at)), null);
+      renderWriteMeta(); renderWriteDanger(); autoGrow();
+      var ta = $("wBody");
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    });
+  }
+
+  function saveWrite() {
+    clearTimeout(W.timer);
+    if (!W.dirty || W.saving || !S.uid) return Promise.resolve();
+    var title = $("wTitle").value.trim().slice(0, 200), body = $("wBody").value;
+    if (!W.id && !title && !body.trim()) { W.dirty = false; wStatus("", null); return Promise.resolve(); }
+    var row = { title: title, body: body, word_count: wordCount(body), updated_at: nowIso() };
+    var wasNew = !W.id;
+    W.saving = true;
+    W.dirty = false;
+    wStatus("Guardando…", null);
+    var q = W.id
+      ? sb.from("my_books").update(row).eq("id", W.id).select("id").single()
+      : sb.from("my_books").insert(Object.assign({ user_id: S.uid }, row)).select("id").single();
+    return q.then(function (res) {
+      W.saving = false;
+      if (res.error) throw res.error;
+      W.id = res.data.id;
+      S.myBooksMissing = false;
+      S.myBooks = S.myBooks.filter(function (m) { return m.id !== W.id; });
+      S.myBooks.unshift({ id: W.id, title: title, words: row.word_count, updatedAt: Date.now() });
+      if (W.dirty) { W.timer = setTimeout(saveWrite, 1200); wStatus("Escribiendo…", null); }
+      else wStatus("Guardado ✓", "saved");
+      if (wasNew) { renderWritePick(); renderWriteDanger(); }
+      renderMyBookCard();
+    }).catch(function (e) {
+      W.saving = false;
+      W.dirty = true;
+      console.error("Error al guardar Mi libro:", e);
+      if (tableMissing(e, "my_books")) { S.myBooksMissing = true; wStatus("Falta activar «Mi libro» en la base de datos (migración 007).", "error"); return; }
+      wStatus("Sin conexión: se reintentará en unos segundos.", "error");
+      W.timer = setTimeout(saveWrite, 5000);
+    });
+  }
+
+  function closeWrite() {
+    saveWrite();
+    $("writeLayer").hidden = true;
+    document.body.style.overflow = "";
+    if (W.dirty) toast("Lo último que escribiste aún no se guardó. Se reintentará al volver a abrir tu libro.");
+  }
+
+  function deleteWrite() {
+    var id = W.id;
+    if (!id) return;
+    clearTimeout(W.timer);
+    W.dirty = false;
+    sb.from("my_books").delete().eq("id", id).then(function (res) {
+      if (res.error) { console.error(res.error); toast("No se pudo eliminar. Revisa tu conexión e inténtalo otra vez."); return; }
+      S.myBooks = S.myBooks.filter(function (m) { return m.id !== id; });
+      W.id = null;
+      $("writeLayer").hidden = true;
+      document.body.style.overflow = "";
+      renderMyBookCard();
+      toast("Libro eliminado.");
+    });
+  }
+
+  function onWriteInput() {
+    W.dirty = true;
+    W.confirmDelete = false;
+    wStatus("Escribiendo…", null);
+    renderWriteMeta();
+    clearTimeout(W.timer);
+    W.timer = setTimeout(saveWrite, 1200);
+  }
+  $("wTitle").addEventListener("input", onWriteInput);
+  $("wBody").addEventListener("input", function () { autoGrow(); onWriteInput(); });
+  $("wSave").addEventListener("click", function () {
+    if (!W.dirty && !W.saving) { wStatus(W.id ? "Guardado ✓" : "Escribe algo para guardar.", W.id ? "saved" : null); return; }
+    saveWrite();
+  });
+  $("wNew").addEventListener("click", function () { saveWrite().then(function () { openWrite(null); }); });
+  $("wPick").addEventListener("change", function (e) {
+    var id = e.target.value;
+    saveWrite().then(function () { openWrite(id || null); });
+  });
+  window.addEventListener("resize", function () { if (!$("writeLayer").hidden) autoGrow(); });
+
   function updateNbStreak() {
     var el = $("nbStreak");
     if (!el) return;
@@ -691,6 +870,7 @@
   $("nbQuote").addEventListener("click", function () { insertAtCursor("❝ \n", 2); });
   window.addEventListener("beforeunload", function (e) {
     if (notesDirty || notesSaving) { saveNotes(); e.preventDefault(); e.returnValue = ""; }
+    if (W.dirty || W.saving) { saveWrite(); e.preventDefault(); e.returnValue = ""; }
   });
 
   function renderAudio() {
@@ -750,6 +930,7 @@
   // Cada cuenta carga solo su propio estante; sin sesión no se pide nada.
   function clearShelf() {
     S.books = []; S.reviews = []; S.profiles = {}; S.notes = {}; S.activity = {};
+    S.myBooks = []; S.myBooksLoaded = false;
     S.loaded = false; S.loadError = false;
   }
   function loadAll() {
@@ -770,6 +951,7 @@
       maybeAskName();
       loadNotes();
       loadActivity();
+      loadMyBooks();
     }).catch(function (e) {
       if (uid !== S.uid) return;
       console.error("Error al cargar el estante:", e);
@@ -1177,6 +1359,8 @@
     if (close === "login") { closeLogin(); return; }
     if (close === "notes") { closeNotes(); return; }
     if (close === "streak") { closeStreak(); return; }
+    if (close === "write") { closeWrite(); return; }
+    if (t.hasAttribute("data-write")) { openWrite(t.getAttribute("data-write")); return; }
     if (close === "name") { closeName(); return; }
     if (t.id === "addBtn") { openForm(null); return; }
     if (t.hasAttribute("data-auth-mode")) { setAuthMode(t.getAttribute("data-auth-mode")); return; }
@@ -1197,6 +1381,10 @@
       case "edit": openForm(S.openId); break;
       case "notes-open": openNotes(S.openId); break;
       case "streak": openStreak(); break;
+      case "write-new": openWrite(null); break;
+      case "write-delete-ask": W.confirmDelete = true; renderWriteDanger(); break;
+      case "write-delete-no": W.confirmDelete = false; renderWriteDanger(); break;
+      case "write-delete-yes": deleteWrite(); break;
       case "nudge-notes": var nb = bookForNotes(); if (nb) { closeStreak(); openNotes(nb); } break;
       case "delete-ask": S.confirmDelete = true; renderDetail(); break;
       case "delete-no": S.confirmDelete = false; renderDetail(); break;
@@ -1220,12 +1408,13 @@
     if (e.key !== "Escape") return;
     if (!$("nameLayer").hidden) closeName();
     else if (!$("loginLayer").hidden) closeLogin();
+    else if (!$("writeLayer").hidden) closeWrite();
     else if (!$("notesLayer").hidden) closeNotes();
     else if (!$("streakLayer").hidden) closeStreak();
     else if (!$("formLayer").hidden) closeForm();
     else if (!$("detailLayer").hidden) closeDetail();
   });
-  $("q").addEventListener("input", function (e) { S.q = e.target.value; renderSpot(); renderRows(); });
+  $("q").addEventListener("input", function (e) { S.q = e.target.value; renderSpot(); renderMyBookCard(); renderRows(); });
 
   // ---------- Boot ----------
   function setSession(session) {
@@ -1240,6 +1429,7 @@
       // Al cambiar de cuenta (o salir) no queda nada del estante anterior en pantalla.
       if (changed) { closeDetail(); $("formLayer").hidden = true; }
       $("notesLayer").hidden = true; notesDirty = false; clearTimeout(notesTimer);
+      $("writeLayer").hidden = true; document.body.style.overflow = ""; W.dirty = false; W.id = null; clearTimeout(W.timer);
       if (!uid) S.nameAsked = false;
       clearShelf();
       renderAll();

@@ -34,6 +34,7 @@
     <div class="stats" id="stats" aria-label="Resumen"></div>
     <div class="nudge" id="streakNudge" hidden></div>
     <section id="spot" hidden></section>
+    <section id="myBookCard" hidden></section>
     <main class="rows" id="rows"></main>
   </div>
 
@@ -55,6 +56,27 @@
       </div>
       <div id="dManage" class="section"></div>
     </aside>
+  </div>
+
+  <!-- Mi libro: hoja de escritura propia (no cuenta para la racha) -->
+  <div id="writeLayer" class="write-layer" role="dialog" aria-modal="true" aria-label="Mi libro" hidden>
+    <div class="write-bar">
+      <button class="btn" type="button" data-close="write"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5L9 12l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>Volver al estante</button>
+      <select id="wPick" aria-label="Elegir cuál de tus libros escribir" hidden></select>
+      <button class="btn" type="button" id="wNew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Nuevo libro</button>
+      <span class="nb-status" id="wStatus" role="status"></span>
+      <button class="btn primary" type="button" id="wSave">Guardar</button>
+    </div>
+    <article class="manuscript">
+      <input id="wTitle" class="ms-title" type="text" maxlength="200" placeholder="Título de tu libro" aria-label="Título de tu libro" autocomplete="off">
+      <textarea id="wBody" class="ms-body" maxlength="2000000" aria-label="Texto de tu libro"
+        placeholder="Empieza aquí tu historia. Escribe a tu ritmo: todo se guarda solo mientras escribes."></textarea>
+      <div class="ms-meta" id="wMeta">
+        <span id="wCount"></span>
+        <span>Privado: solo tú lo ves. No cuenta para la racha de lectura.</span>
+      </div>
+      <div id="wDanger"></div>
+    </article>
   </div>
 
   <!-- Racha de escritura -->
