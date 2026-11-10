@@ -25,12 +25,14 @@
       </div>
       <div class="top-actions">
         <input class="search" id="q" type="search" placeholder="Buscar título, autor o género" aria-label="Buscar título, autor o género">
+        <button class="streak-chip" id="streakChip" type="button" data-action="streak" hidden></button>
         <button class="btn primary" id="addBtn" type="button" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>Agregar libro</button>
         <div id="authArea"></div>
       </div>
     </header>
 
     <div class="stats" id="stats" aria-label="Resumen"></div>
+    <div class="nudge" id="streakNudge" hidden></div>
     <section id="spot" hidden></section>
     <main class="rows" id="rows"></main>
   </div>
@@ -55,6 +57,18 @@
     </aside>
   </div>
 
+  <!-- Racha de escritura -->
+  <div id="streakLayer" hidden>
+    <div class="scrim" data-close="streak"></div>
+    <aside class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+      <div class="sheet-bar">
+        <h2 id="sTitle">Tu racha</h2>
+        <button class="x" type="button" data-close="streak" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
+      </div>
+      <div id="streakBody" class="section"></div>
+    </aside>
+  </div>
+
   <!-- Cuaderno de notas privadas -->
   <div id="notesLayer" hidden>
     <div class="scrim" data-close="notes"></div>
@@ -69,8 +83,10 @@
       <div class="nb-tools">
         <button class="btn" type="button" id="nbMark" title="Inserta en qué capítulo o página vas y la fecha"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v15l-5-3.6-5 3.6v-15Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" fill="none"/></svg>Marca de avance</button>
         <button class="btn" type="button" id="nbQuote" title="Para copiar una frase del libro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17.5c0-4 1.5-7.2 4.6-9.5l1 1.3C8.9 10.8 8.2 12.4 8.1 14H10v3.5H5Zm8 0c0-4 1.5-7.2 4.6-9.5l1 1.3c-1.7 1.5-2.4 3.1-2.5 4.7H18v3.5h-5Z" fill="currentColor"/></svg>Cita</button>
+        <button class="btn primary" type="button" id="nbSave">Guardar</button>
         <span class="nb-status" id="nbStatus" role="status"></span>
       </div>
+      <p class="nb-streak" id="nbStreak" aria-live="polite"></p>
       <textarea id="nbText" class="notebook" maxlength="50000" aria-label="Notas del libro"
         placeholder="Ideas que te llamaron la atención, frases para recordar, preguntas, reflexiones…"></textarea>
       <p class="small with-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>Tus notas son privadas: solo tú las ves. Se guardan solas mientras escribes.</p>

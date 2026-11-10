@@ -79,6 +79,22 @@ create policy "notas: crear propias"  on public.book_notes for insert to authent
 create policy "notas: editar propias" on public.book_notes for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "notas: borrar propias" on public.book_notes for delete to authenticated using (user_id = auth.uid());
 
+-- Racha de escritura (ver migraciones/006-racha.sql)
+create table if not exists public.note_activity (
+  user_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  day          date not null,
+  book_id      uuid not null,
+  baseline_len int  not null check (baseline_len >= 0),
+  best_len     int  not null check (best_len >= 0),
+  updated_at   timestamptz not null default now(),
+  primary key (user_id, day, book_id)
+);
+grant select, insert, update, delete on public.note_activity to authenticated;
+alter table public.note_activity enable row level security;
+create policy "racha: leer propia"   on public.note_activity for select to authenticated using (user_id = auth.uid());
+create policy "racha: crear propia"  on public.note_activity for insert to authenticated with check (user_id = auth.uid());
+create policy "racha: editar propia" on public.note_activity for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- ---------- Cambios en vivo (se actualiza solo en todos los dispositivos) ----------
 alter publication supabase_realtime add table public.books, public.reviews, public.profiles;
 

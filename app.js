@@ -45,6 +45,7 @@
     form: { editingId: null, file: null, previewUrl: null, removeCover: false },
     nameAsked: false,
     authReady: false,
+    activity: {}, streakMissing: false,
     notes: {}, notesMissing: false, notesBookId: null,
     busy: false
   };
@@ -345,6 +346,7 @@
     renderStats();
     renderSpot();
     renderRows();
+    renderStreak();
     if (S.openId) renderDetail();
   }
 
@@ -457,6 +459,7 @@
     $("nbText").value = n ? n.body : "";
     nbStatus(n && n.updatedAt ? "Guardado el " + fmtDate(n.updatedAt) : "", null);
     $("notesLayer").hidden = false;
+    updateNbStreak();
     var ta = $("nbText");
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -481,9 +484,12 @@
         notesSaving = false;
         if (res.error) throw res.error;
         S.notesMissing = false;
+        var prevLen = noteLen((S.notes[bookId] && S.notes[bookId].body) || "");
         S.notes[bookId] = { body: body, updatedAt: Date.now() };
+        recordActivity(bookId, prevLen, noteLen(body));
         if (notesDirty) { notesTimer = setTimeout(saveNotes, 900); nbStatus("Escribiendo…", null); }
         else nbStatus("Guardado ✓", "saved");
+        updateNbStreak();
         if (S.openId === bookId) renderNotesSection();
       })
       .catch(function (e) {
@@ -513,9 +519,168 @@
   $("nbText").addEventListener("input", function () {
     notesDirty = true;
     nbStatus("Escribiendo…", null);
+    updateNbStreak();
     clearTimeout(notesTimer);
     notesTimer = setTimeout(saveNotes, 900);
   });
+  $("nbSave").addEventListener("click", function () {
+    if (!notesDirty && !notesSaving) { nbStatus("Guardado ✓", "saved"); updateNbStreak(); return; }
+    saveNotes();
+  });
+
+  // ---------- Racha de escritura ----------
+  // Un día cuenta cuando, sumando todos los libros, se escribieron y guardaron
+  // al menos STREAK_GOAL caracteres nuevos en las notas (sin espacios ni marcas de avance).
+  var STREAK_GOAL = 100;
+  var FLAME = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.3 2.6c.5 3.1-1.4 4.8-2.9 6.5C8 10.7 7 12.3 7 14.6a5 5 0 0 0 10 0c0-2.2-.9-3.7-2.1-4.9.2 1.6-.5 2.7-1.4 3.2.4-3.6-1-7.6-1.2-10.3Z" fill="currentColor"/></svg>';
+  var CHECK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4 4 9-9.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+
+  function noteLen(text) { return String(text || "").replace(/^— .* —$/gm, "").replace(/\s/g, "").length; }
+  function ymd(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function todayKey() { return ymd(new Date()); }
+  function dayShift(key, n) {
+    var p = key.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + n);
+    return ymd(d);
+  }
+  function dayTotal(key, exceptBook) {
+    var day = S.activity[key], t = 0;
+    if (!day) return 0;
+    Object.keys(day).forEach(function (b) { if (b !== exceptBook) t += Math.max(0, day[b].best - day[b].baseline); });
+    return t;
+  }
+  function streakInfo() {
+    var today = todayKey(), doneToday = dayTotal(today) >= STREAK_GOAL;
+    // Si hoy todavía no se escribió, la racha sigue viva hasta medianoche contando desde ayer.
+    var current = 0, k = doneToday ? today : dayShift(today, -1);
+    while (dayTotal(k) >= STREAK_GOAL) { current++; k = dayShift(k, -1); }
+    var best = 0, run = 0, last = null;
+    Object.keys(S.activity).sort().forEach(function (key) {
+      if (dayTotal(key) < STREAK_GOAL) return;
+      run = last && dayShift(last, 1) === key ? run + 1 : 1;
+      last = key;
+      if (run > best) best = run;
+    });
+    return { current: current, best: Math.max(best, current), doneToday: doneToday, todayChars: dayTotal(today) };
+  }
+  function tableMissing(e, table) {
+    var code = e && e.code, msg = String((e && e.message) || "");
+    return code === "42P01" || code === "PGRST205" || msg.indexOf(table) !== -1 && /does not exist|not find/i.test(msg);
+  }
+
+  function loadActivity() {
+    if (!sb || !S.uid) return;
+    var uid = S.uid;
+    sb.from("note_activity").select("day,book_id,baseline_len,best_len").order("day", { ascending: false }).limit(3000).then(function (res) {
+      if (uid !== S.uid) return;
+      if (res.error) { S.streakMissing = tableMissing(res.error, "note_activity"); renderStreak(); return; }
+      var a = {};
+      res.data.forEach(function (r) { (a[r.day] = a[r.day] || {})[r.book_id] = { baseline: r.baseline_len, best: r.best_len }; });
+      S.activity = a;
+      S.streakMissing = false;
+      renderStreak();
+    });
+  }
+
+  var activityChain = Promise.resolve();
+  function recordActivity(bookId, prevLen, newLen) {
+    if (S.streakMissing || !S.uid) return;
+    var day = todayKey(), before = streakInfo();
+    var dayMap = S.activity[day] = S.activity[day] || {};
+    var row = dayMap[bookId] || (dayMap[bookId] = { baseline: prevLen, best: prevLen });
+    if (newLen <= row.best) return;
+    row.best = newLen;
+    var after = streakInfo();
+    renderStreak();
+    if (!before.doneToday && after.doneToday) {
+      toast(after.current === 1 ? "¡Racha encendida! Mañana escribe otros 100 caracteres para seguir."
+        : "¡Racha de " + after.current + " días! Sigue así.");
+    }
+    var payload = { user_id: S.uid, day: day, book_id: bookId, baseline_len: row.baseline, best_len: row.best, updated_at: nowIso() };
+    activityChain = activityChain.then(function () {
+      return sb.from("note_activity").upsert(payload, { onConflict: "user_id,day,book_id" }).then(function (res) {
+        if (!res.error) return;
+        console.error("Error al guardar la racha:", res.error);
+        if (tableMissing(res.error, "note_activity")) { S.streakMissing = true; renderStreak(); }
+      });
+    });
+  }
+
+  function renderStreak() {
+    var chip = $("streakChip"), nudge = $("streakNudge");
+    if (!S.uid || !S.loaded || S.streakMissing) { chip.hidden = true; nudge.hidden = true; return; }
+    var s = streakInfo();
+    chip.hidden = false;
+    chip.className = "streak-chip" + (s.doneToday ? " done" : s.current ? " pending" : "");
+    chip.innerHTML = FLAME + "<b>" + s.current + "</b>" + plural(s.current, "día", "días");
+    chip.setAttribute("aria-label", "Tu racha: " + s.current + " " + plural(s.current, "día", "días") +
+      (s.doneToday ? ". Hoy ya cuenta." : ". Falta escribir hoy."));
+
+    if (s.doneToday || !S.books.length) {
+      nudge.hidden = true;
+    } else {
+      var left = STREAK_GOAL - s.todayChars;
+      nudge.hidden = false;
+      nudge.innerHTML = '<div class="nudge-text">' + FLAME + "<p>" +
+        (s.current
+          ? "<b>Tu racha de " + s.current + " " + plural(s.current, "día", "días") + " sigue viva.</b> Escribe hoy " + left + " caracteres más en tus notas sobre lo que leíste y guarda para no perderla."
+          : "<b>¿Quieres una racha?</b> Escribe al menos " + STREAK_GOAL + " caracteres en las notas de un libro sobre lo que leíste y guarda. Mañana, otros " + STREAK_GOAL + ".") +
+        "</p></div>" +
+        '<div class="nudge-progress"><span>Hoy: ' + s.todayChars + "/" + STREAK_GOAL + " caracteres</span>" +
+        '<div class="pbar flame"><span style="width:' + Math.min(100, Math.round(s.todayChars / STREAK_GOAL * 100)) + '%"></span></div></div>' +
+        '<button class="btn primary" type="button" data-action="nudge-notes">' + icon("pencil") + "Escribir en mis notas</button>";
+    }
+    if (!$("streakLayer").hidden) renderStreakPanel();
+  }
+
+  function renderStreakPanel() {
+    var s = streakInfo(), today = todayKey(), days = "";
+    for (var i = 6; i >= 0; i--) {
+      var key = dayShift(today, -i), on = dayTotal(key) >= STREAK_GOAL;
+      var p = key.split("-"), name = new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("es", { weekday: "short" }).replace(".", "");
+      days += '<div class="d' + (i === 0 ? " today" : "") + '"><span class="dot' + (on ? " on" : "") + '">' + (on ? CHECK : "") + "</span>" + esc(i === 0 ? "hoy" : name) + "</div>";
+    }
+    $("streakBody").innerHTML =
+      '<div class="streak-hero' + (s.doneToday || s.current ? " on" : "") + '">' + FLAME +
+      '<div><div class="big">' + s.current + '</div><div class="lbl">' + plural(s.current, "día seguido", "días seguidos") + "</div></div></div>" +
+      '<p class="lede">' + (s.doneToday ? "Hoy ya cuenta para tu racha. Vuelve mañana y escribe otros " + STREAK_GOAL + " caracteres."
+        : s.current ? "Hoy llevas " + s.todayChars + "/" + STREAK_GOAL + " caracteres. Escribe y guarda antes de medianoche para no perder tu racha."
+        : "Hoy llevas " + s.todayChars + "/" + STREAK_GOAL + " caracteres. Llega a " + STREAK_GOAL + " y guarda para encender tu racha.") + "</p>" +
+      '<div class="pbar flame"><span style="width:' + Math.min(100, Math.round(s.todayChars / STREAK_GOAL * 100)) + '%"></span></div>' +
+      "<h3>Últimos 7 días</h3>" + '<div class="week">' + days + "</div>" +
+      '<p class="small">Mejor racha: <b>' + s.best + " " + plural(s.best, "día", "días") + "</b></p>" +
+      "<h3>Cómo funciona</h3>" +
+      '<ol class="rules"><li>Abre las notas de cualquier libro y escribe lo que leíste, lo que pensaste o lo que quieres recordar.</li>' +
+      "<li>Cada día necesitas <b>" + STREAK_GOAL + " caracteres nuevos</b> guardados. Puede ser en el mismo cuaderno o repartido entre varios libros.</li>" +
+      "<li>Los espacios y las marcas de avance no cuentan, y borrar y volver a escribir lo mismo no suma dos veces.</li>" +
+      "<li>Si un día no escribes, la racha vuelve a cero.</li></ol>" +
+      (S.books.length ? '<div class="actions"><button class="btn primary" type="button" data-action="nudge-notes">' + icon("pencil") + "Escribir en mis notas</button></div>" : "");
+  }
+  function openStreak() { $("streakLayer").hidden = false; renderStreakPanel(); }
+  function closeStreak() { $("streakLayer").hidden = true; }
+
+  // El libro más a mano para escribir: el que se está leyendo, o el último agregado.
+  function bookForNotes() {
+    var b = spotBook();
+    if (b) return b.id;
+    var list = S.books.slice().sort(function (a, c) { return c.createdAt - a.createdAt; });
+    return list.length ? list[0].id : null;
+  }
+
+  function updateNbStreak() {
+    var el = $("nbStreak");
+    if (!el) return;
+    if (S.streakMissing || !S.notesBookId) { el.innerHTML = ""; return; }
+    var day = todayKey(), bookId = S.notesBookId;
+    var row = S.activity[day] && S.activity[day][bookId];
+    var baseline = row ? row.baseline : noteLen((S.notes[bookId] && S.notes[bookId].body) || "");
+    var best = row ? row.best : baseline;
+    var live = Math.max(0, Math.max(best, noteLen($("nbText").value)) - baseline);
+    var total = dayTotal(day, bookId) + live;
+    if (dayTotal(day) >= STREAK_GOAL) { el.className = "nb-streak done"; el.innerHTML = FLAME + "Racha de hoy encendida. ¡Bien hecho!"; }
+    else if (total >= STREAK_GOAL) { el.className = "nb-streak ready"; el.innerHTML = FLAME + "¡Llegaste a " + STREAK_GOAL + "! Pulsa Guardar para encender tu racha."; }
+    else { el.className = "nb-streak"; el.innerHTML = FLAME + "Hoy: " + total + "/" + STREAK_GOAL + " caracteres para tu racha"; }
+  }
   $("nbMark").addEventListener("click", function () {
     var b = findBook(S.notesBookId);
     var parts = [];
@@ -584,7 +749,7 @@
   // ---------- Loading + realtime ----------
   // Cada cuenta carga solo su propio estante; sin sesión no se pide nada.
   function clearShelf() {
-    S.books = []; S.reviews = []; S.profiles = {}; S.notes = {};
+    S.books = []; S.reviews = []; S.profiles = {}; S.notes = {}; S.activity = {};
     S.loaded = false; S.loadError = false;
   }
   function loadAll() {
@@ -604,6 +769,7 @@
       renderAll();
       maybeAskName();
       loadNotes();
+      loadActivity();
     }).catch(function (e) {
       if (uid !== S.uid) return;
       console.error("Error al cargar el estante:", e);
@@ -1010,6 +1176,7 @@
     if (close === "form") { closeForm(); return; }
     if (close === "login") { closeLogin(); return; }
     if (close === "notes") { closeNotes(); return; }
+    if (close === "streak") { closeStreak(); return; }
     if (close === "name") { closeName(); return; }
     if (t.id === "addBtn") { openForm(null); return; }
     if (t.hasAttribute("data-auth-mode")) { setAuthMode(t.getAttribute("data-auth-mode")); return; }
@@ -1029,6 +1196,8 @@
       case "profile": openName(); break;
       case "edit": openForm(S.openId); break;
       case "notes-open": openNotes(S.openId); break;
+      case "streak": openStreak(); break;
+      case "nudge-notes": var nb = bookForNotes(); if (nb) { closeStreak(); openNotes(nb); } break;
       case "delete-ask": S.confirmDelete = true; renderDetail(); break;
       case "delete-no": S.confirmDelete = false; renderDetail(); break;
       case "delete-yes": deleteBook(); break;
@@ -1052,6 +1221,7 @@
     if (!$("nameLayer").hidden) closeName();
     else if (!$("loginLayer").hidden) closeLogin();
     else if (!$("notesLayer").hidden) closeNotes();
+    else if (!$("streakLayer").hidden) closeStreak();
     else if (!$("formLayer").hidden) closeForm();
     else if (!$("detailLayer").hidden) closeDetail();
   });
